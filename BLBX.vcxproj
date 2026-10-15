@@ -1,0 +1,306 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|Win32">
+      <Configuration>Debug</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|Win32">
+      <Configuration>Release</Configuration>
+      <Platform>Win32</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="external\ImGui\ImGui\imgui.cpp" />
+    <ClCompile Include="external\ImGui\ImGui\ImGuiCtrl.cpp" />
+    <ClCompile Include="external\ImGui\ImGui\ImGuiTimer.cpp" />
+    <ClCompile Include="external\ImGui\ImGui\imgui_demo.cpp" />
+    <ClCompile Include="external\ImGui\ImGui\imgui_draw.cpp" />
+    <ClCompile Include="external\ImGui\ImGui\imgui_impl_dx11.cpp" />
+    <ClCompile Include="external\ImGui\ImGui\imgui_impl_win32.cpp" />
+    <ClCompile Include="external\ImGui\ImGui\imgui_ja_gryph_ranges.cpp" />
+    <ClCompile Include="external\ImGui\ImGui\imgui_tables.cpp" />
+    <ClCompile Include="external\ImGui\ImGui\imgui_widgets.cpp" />
+    <ClCompile Include="external\ImGui\ImGui\profiler.cpp" />
+    <ClCompile Include="Src\BLBX\Core\Application.cpp" />
+    <ClCompile Include="Src\BLBX\Graphics\Camera\Camera.cpp" />
+    <ClCompile Include="Src\BLBX\Graphics\Camera\FreeCameraController.cpp" />
+    <ClCompile Include="Src\BLBX\Graphics\Graphics.cpp" />
+    <ClCompile Include="Src\BLBX\Graphics\Resource\GpuResourceUtils.cpp" />
+    <ClCompile Include="Src\BLBX\Graphics\Shader\Shader.cpp" />
+    <ClCompile Include="Src\BLBX\Graphics\Resource\Texture.cpp" />
+    <ClCompile Include="Src\BLBX\Input\GamePad.cpp" />
+    <ClCompile Include="Src\BLBX\Input\Input.cpp" />
+    <ClCompile Include="Src\BLBX\Input\Mouse.cpp" />
+    <ClCompile Include="Src\BLBX\Main.cpp" />
+    <ClCompile Include="Src\BLBX\Object\ModelObject.cpp" />
+    <ClCompile Include="Src\BLBX\Renderer\ImGuiRenderer.cpp" />
+    <ClCompile Include="Src\BLBX\Renderer\PrimitiveRenderer.cpp" />
+    <ClCompile Include="Src\BLBX\Renderer\ShapeRenderer2D.cpp" />
+    <ClCompile Include="Src\BLBX\Resource\Model\GltfModel.cpp" />
+    <ClCompile Include="Src\BLBX\Resource\Sprite\Sprite.cpp" />
+    <ClCompile Include="Src\BLBX\Scene\SceneGame.cpp" />
+    <ClCompile Include="Src\BLBX\Scene\SceneManager.cpp" />
+    <ClCompile Include="Src\BLBX\Scene\SceneTitle.cpp" />
+    <ClCompile Include="Src\BLBX\Soccer\Ball\SoccerBall.cpp" />
+    <ClCompile Include="Src\BLBX\Soccer\Player\Controller\PlayerController.cpp" />
+    <ClCompile Include="Src\BLBX\Soccer\Player\Data\PlayerConfig.cpp" />
+    <ClCompile Include="Src\BLBX\Soccer\Player\Movement\PlayerMovement.cpp" />
+    <ClCompile Include="Src\BLBX\Soccer\Player\SoccerPlayer.cpp" />
+    <ClCompile Include="Src\BLBX\Soccer\Stage\Stadium.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="external\ImGui\ImGui\imconfig.h" />
+    <ClInclude Include="external\ImGui\ImGui\imgui.h" />
+    <ClInclude Include="external\ImGui\ImGui\ImGuiAddon.h" />
+    <ClInclude Include="external\ImGui\ImGui\ImGuiAll.h" />
+    <ClInclude Include="external\ImGui\ImGui\ImGuiCtrl.h" />
+    <ClInclude Include="external\ImGui\ImGui\ImGuiTimer.h" />
+    <ClInclude Include="external\ImGui\ImGui\imgui_impl_dx11.h" />
+    <ClInclude Include="external\ImGui\ImGui\imgui_impl_win32.h" />
+    <ClInclude Include="external\ImGui\ImGui\imgui_internal.h" />
+    <ClInclude Include="external\ImGui\ImGui\imstb_rectpack.h" />
+    <ClInclude Include="external\ImGui\ImGui\imstb_textedit.h" />
+    <ClInclude Include="external\ImGui\ImGui\imstb_truetype.h" />
+    <ClInclude Include="external\ImGui\ImGui\profiler.h" />
+    <ClInclude Include="Src\BLBX\Core\Application.h" />
+    <ClInclude Include="Src\BLBX\Core\Config.h" />
+    <ClInclude Include="Src\BLBX\Core\HighResolutionTimer.h" />
+    <ClInclude Include="Src\BLBX\Core\Misc.h" />
+    <ClInclude Include="Src\BLBX\Graphics\Camera\Camera.h" />
+    <ClInclude Include="Src\BLBX\Graphics\Camera\FreeCameraController.h" />
+    <ClInclude Include="Src\BLBX\Graphics\Debug\D3D11DebugUtil.h" />
+    <ClInclude Include="Src\BLBX\Graphics\Resource\GpuResourceUtils.h" />
+    <ClInclude Include="Src\BLBX\Graphics\Graphics.h" />
+    <ClInclude Include="Src\BLBX\Graphics\SceneConstants.h" />
+    <ClInclude Include="Src\BLBX\Graphics\Resource\Texture.h" />
+    <ClInclude Include="Src\BLBX\Core\Transform.h" />
+    <ClInclude Include="Src\BLBX\Input\GamePad.h" />
+    <ClInclude Include="Src\BLBX\Input\Input.h" />
+    <ClInclude Include="Src\BLBX\Input\Mouse.h" />
+    <ClInclude Include="Src\BLBX\Object\GameObject.h" />
+    <ClInclude Include="Src\BLBX\Object\ModelObject.h" />
+    <ClInclude Include="Src\BLBX\Renderer\ImGuiRenderer.h" />
+    <ClInclude Include="Src\BLBX\Renderer\PrimitiveRenderer.h" />
+    <ClInclude Include="Src\BLBX\Renderer\ShapeRenderer2D.h" />
+    <ClInclude Include="Src\BLBX\Resource\Model\GltfModel.h" />
+    <ClInclude Include="Src\BLBX\Resource\Sprite\Sprite.h" />
+    <ClInclude Include="Src\BLBX\Scene\Scene.h" />
+    <ClInclude Include="Src\BLBX\Scene\SceneGame.h" />
+    <ClInclude Include="Src\BLBX\Scene\SceneManager.h" />
+    <ClInclude Include="Src\BLBX\Scene\SceneTitle.h" />
+    <ClInclude Include="Src\BLBX\Graphics\Shader\Shader.h" />
+    <ClInclude Include="Src\BLBX\Soccer\Ball\SoccerBall.h" />
+    <ClInclude Include="Src\BLBX\Soccer\Player\Controller\PlayerController.h" />
+    <ClInclude Include="Src\BLBX\Soccer\Player\Data\PlayerConfig.h" />
+    <ClInclude Include="Src\BLBX\Soccer\Player\Movement\PlayerMovement.h" />
+    <ClInclude Include="Src\BLBX\Soccer\Player\SoccerPlayer.h" />
+    <ClInclude Include="Src\BLBX\Soccer\Stage\Stadium.h" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="external\DirectXTex-main\DirectXTex\DirectXTex_Desktop_2022.vcxproj" />
+    <None Include="Src\BLBX\Shader\2D\Shape2D.hlsli" />
+    <None Include="Src\BLBX\Shader\2D\Sprite.hlsli" />
+    <None Include="Src\BLBX\Shader\3D\GltfModel.hlsli" />
+    <None Include="Src\BLBX\Shader\3D\PrimitiveRenderer.hlsli" />
+    <None Include="Src\BLBX\Shader\PBR\BRDF.hlsli" />
+    <None Include="Src\BLBX\Shader\PBR\ImageBasedLighting.hlsli" />
+  </ItemGroup>
+  <ItemGroup>
+    <FxCompile Include="Src\BLBX\Shader\2D\Shape2D_ps.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
+    </FxCompile>
+    <FxCompile Include="Src\BLBX\Shader\2D\Shape2D_vs.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
+    </FxCompile>
+    <FxCompile Include="Src\BLBX\Shader\2D\Sprite_ps.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
+    </FxCompile>
+    <FxCompile Include="Src\BLBX\Shader\2D\Sprite_vs.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
+    </FxCompile>
+    <FxCompile Include="Src\BLBX\Shader\3D\GltfModelStaticBatching_vs.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
+    </FxCompile>
+    <FxCompile Include="Src\BLBX\Shader\3D\GltfModel_ps.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">5.0</ShaderModel>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">5.0</ShaderModel>
+    </FxCompile>
+    <FxCompile Include="Src\BLBX\Shader\3D\GltfModel_vs.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">5.0</ShaderModel>
+      <ShaderModel Condition="'$(Configuration)|$(Platform)'=='Release|x64'">5.0</ShaderModel>
+    </FxCompile>
+    <FxCompile Include="Src\BLBX\Shader\3D\PrimitiveRenderer_ps.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Pixel</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Pixel</ShaderType>
+    </FxCompile>
+    <FxCompile Include="Src\BLBX\Shader\3D\PrimitiveRenderer_vs.hlsl">
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Vertex</ShaderType>
+      <ShaderType Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Vertex</ShaderType>
+    </FxCompile>
+  </ItemGroup>
+  <PropertyGroup Label="Globals">
+    <VCProjectVersion>17.0</VCProjectVersion>
+    <Keyword>Win32Proj</Keyword>
+    <ProjectGuid>{6e94b908-4d21-4382-94e4-932fb81b0be4}</ProjectGuid>
+    <RootNamespace>BLBX</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+  <ImportGroup Label="ExtensionSettings">
+  </ImportGroup>
+  <ImportGroup Label="Shared">
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props" Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')" Label="LocalAppDataPlatform" />
+  </ImportGroup>
+  <PropertyGroup Label="UserMacros" />
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>WIN32;_DEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>WIN32;NDEBUG;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+    </ClCompile>
+    <Link>
+      <SubSystem>Console</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>_DEBUG;USE_IMGUI;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <AdditionalIncludeDirectories>.\Src\BLBX;.\external;C:\Program Files\Autodesk\FBX\FBX SDK\2020.3.1\include;.\external\DirectXTK-main\Inc;.\external\DirectXTex-main\DirectXTex;.\external\ImGui\ImGui;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+      <MultiProcessorCompilation>true</MultiProcessorCompilation>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>C:\Program Files\Autodesk\FBX\FBX SDK\2020.3.1\lib\vs2019\x64\debug;.\external\DirectXTK-main\Bin\Desktop_2019\x64\Debug;C:\Users\2240216\Desktop\libraries\BLBX\BLBX\external\DirectXTex-main\DirectXTex\Bin\Desktop_2022\x64\Debug;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>d3d11.lib;dxgi.lib;DirectXTK.lib;%(AdditionalDependencies);zlib-md.lib;libxml2-md.lib;libfbxsdk-md.lib;xinput.lib;DirectXTex.lib</AdditionalDependencies>
+    </Link>
+    <FxCompile>
+      <ObjectFileOutput>Data\Shader\%(Filename).cso</ObjectFileOutput>
+    </FxCompile>
+    <FxCompile>
+      <AssemblerOutput>AssemblyCode</AssemblerOutput>
+    </FxCompile>
+    <FxCompile>
+      <AssemblerOutputFile>Data\Shader\%(Filename).cod</AssemblerOutputFile>
+    </FxCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <ClCompile>
+      <WarningLevel>Level3</WarningLevel>
+      <FunctionLevelLinking>true</FunctionLevelLinking>
+      <IntrinsicFunctions>true</IntrinsicFunctions>
+      <SDLCheck>true</SDLCheck>
+      <PreprocessorDefinitions>NDEBUG;_WINDOWS;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+      <ConformanceMode>true</ConformanceMode>
+      <LanguageStandard>stdcpp17</LanguageStandard>
+      <AdditionalIncludeDirectories>.\Src\BLBX;.\external;C:\Program Files\Autodesk\FBX\FBX SDK\2020.3.1\include;.\external\DirectXTK-main\Inc;.\external\DirectXTex-main\DirectXTex;.\external\ImGui\ImGui;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <EnableCOMDATFolding>true</EnableCOMDATFolding>
+      <OptimizeReferences>true</OptimizeReferences>
+      <GenerateDebugInformation>true</GenerateDebugInformation>
+      <AdditionalLibraryDirectories>C:\Program Files\Autodesk\FBX\FBX SDK\2020.3.1\lib\vs2019\x64\release;C:\Users\2240216\Desktop\libraries\BLBX\BLBX\external\DirectXTex-main\DirectXTex\Bin\Desktop_2022\x64\Release;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>$(CoreLibraryDependencies);%(AdditionalDependencies);d3d11.lib;dxgi.lib;DirectXTK.lib;zlib-md.lib;libxml2-md.lib;libfbxsdk-md.lib;DirectXTex.lib</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+  </ImportGroup>
+</Project>
