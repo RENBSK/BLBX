@@ -59,10 +59,6 @@ Framework::~Framework()
 		dc->Flush();
 	}
 
-#if defined(_DEBUG)
-	ReportD3DLiveObjects();
-#endif
-
 	Graphics::Instance().Finalize();
 
 	ReleaseDC(m_hwnd, m_hDC);

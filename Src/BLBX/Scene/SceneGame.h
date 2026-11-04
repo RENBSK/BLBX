@@ -10,10 +10,7 @@
 #include "Graphics/Camera/FreeCameraController.h"
 
 #include "Soccer/Stage/Stadium.h"
-#include "Soccer/Ball/SoccerBall.h"
-#include "Soccer/Player/SoccerPlayer.h"
-#include "Soccer/Player/Controller/PlayerController.h"
-#include "Soccer/Player/Movement/PlayerMovement.h"
+#include "Soccer/SoccerWorld.h"
 
 
 //タイトルシーン
@@ -45,17 +42,9 @@ private:
 	//スタジアム
 	Stadium m_stadium;
 
-	//ボール
-	SoccerBall m_soccerBall;
-
-	//プレイヤー
-	SoccerPlayer m_player;
-
-	//プレイヤーコントローラー
-	PlayerController m_playerController;
-
-	PlayerMovement m_playerMovement;
-
+	//サッカーワールド
+	SoccerWorld m_soccerWorld;
+	
 private:
 	//Imgui
 	bool m_showDebugUI = true;

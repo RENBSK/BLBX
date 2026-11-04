@@ -50,11 +50,21 @@
     <ClCompile Include="Src\BLBX\Scene\SceneGame.cpp" />
     <ClCompile Include="Src\BLBX\Scene\SceneManager.cpp" />
     <ClCompile Include="Src\BLBX\Scene\SceneTitle.cpp" />
+    <ClCompile Include="Src\BLBX\Soccer\AI\Core\SoccerAISystem.cpp" />
+    <ClCompile Include="Src\BLBX\Soccer\AI\Meta\Meta.cpp" />
+    <ClCompile Include="Src\BLBX\Soccer\AI\Modules\Attack\AttackSupportAI.cpp" />
+    <ClCompile Include="Src\BLBX\Soccer\AI\Modules\CalAIeva.cpp" />
+    <ClCompile Include="Src\BLBX\Soccer\AI\Modules\Defense\CoverAI.cpp" />
+    <ClCompile Include="Src\BLBX\Soccer\AI\Modules\Defense\DefenderAI.cpp" />
+    <ClCompile Include="Src\BLBX\Soccer\AI\Request\AIMoveResolver.cpp" />
     <ClCompile Include="Src\BLBX\Soccer\Ball\SoccerBall.cpp" />
     <ClCompile Include="Src\BLBX\Soccer\Player\Controller\PlayerController.cpp" />
     <ClCompile Include="Src\BLBX\Soccer\Player\Data\PlayerConfig.cpp" />
+    <ClCompile Include="Src\BLBX\Soccer\Player\Dribble\DribbleController.cpp" />
+    <ClCompile Include="Src\BLBX\Soccer\Player\Manager\PlayerManager.cpp" />
     <ClCompile Include="Src\BLBX\Soccer\Player\Movement\PlayerMovement.cpp" />
     <ClCompile Include="Src\BLBX\Soccer\Player\SoccerPlayer.cpp" />
+    <ClCompile Include="Src\BLBX\Soccer\SoccerWorld.cpp" />
     <ClCompile Include="Src\BLBX\Soccer\Stage\Stadium.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -98,11 +108,25 @@
     <ClInclude Include="Src\BLBX\Scene\SceneManager.h" />
     <ClInclude Include="Src\BLBX\Scene\SceneTitle.h" />
     <ClInclude Include="Src\BLBX\Graphics\Shader\Shader.h" />
+    <ClInclude Include="Src\BLBX\Soccer\AI\Core\BlackBoard.h" />
+    <ClInclude Include="Src\BLBX\Soccer\AI\Core\SoccerAIModule.h" />
+    <ClInclude Include="Src\BLBX\Soccer\AI\Core\SoccerAISystem.h" />
+    <ClInclude Include="Src\BLBX\Soccer\AI\Keys\BlackBoardKeys.h" />
+    <ClInclude Include="Src\BLBX\Soccer\AI\Meta\Meta.h" />
+    <ClInclude Include="Src\BLBX\Soccer\AI\Modules\Attack\AttackSupportAI.h" />
+    <ClInclude Include="Src\BLBX\Soccer\AI\Modules\CalAIeva.h" />
+    <ClInclude Include="Src\BLBX\Soccer\AI\Modules\Defense\CoverAI.h" />
+    <ClInclude Include="Src\BLBX\Soccer\AI\Modules\Defense\DefenderAI.h" />
+    <ClInclude Include="Src\BLBX\Soccer\AI\Request\AIMoveRequest.h" />
+    <ClInclude Include="Src\BLBX\Soccer\AI\Request\AIMoveResolver.h" />
     <ClInclude Include="Src\BLBX\Soccer\Ball\SoccerBall.h" />
     <ClInclude Include="Src\BLBX\Soccer\Player\Controller\PlayerController.h" />
     <ClInclude Include="Src\BLBX\Soccer\Player\Data\PlayerConfig.h" />
+    <ClInclude Include="Src\BLBX\Soccer\Player\Dribble\DribbleController.h" />
+    <ClInclude Include="Src\BLBX\Soccer\Player\Manager\PlayerManager.h" />
     <ClInclude Include="Src\BLBX\Soccer\Player\Movement\PlayerMovement.h" />
     <ClInclude Include="Src\BLBX\Soccer\Player\SoccerPlayer.h" />
+    <ClInclude Include="Src\BLBX\Soccer\SoccerWorld.h" />
     <ClInclude Include="Src\BLBX\Soccer\Stage\Stadium.h" />
   </ItemGroup>
   <ItemGroup>

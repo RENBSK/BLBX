@@ -1213,3 +1213,52 @@ void GltfModel::UnbindResources(ID3D11DeviceContext* context)
 	context->PSSetShaderResources(0, 8, nullSrvs);
 	context->VSSetShaderResources(0, 8, nullSrvs);
 }
+
+void GltfModel::BlendPoses(
+	const std::vector<node>& fromNodes, 
+	std::vector<node>& toNodes, 
+	float blendFactor)
+{
+	using namespace DirectX;
+
+	if (fromNodes.size() != toNodes.size())
+	{
+		return;
+	}
+
+	blendFactor = std::clamp(blendFactor, 0.0f, 1.0f);
+
+	for (size_t i = 0; i < toNodes.size(); ++i)
+	{
+		const node& from = fromNodes[i];
+		node& to = toNodes[i];
+
+		//ˆÊ’u‚ð•âŠ®
+		XMStoreFloat3(&to.translation,
+			XMVectorLerp(
+				XMLoadFloat3(&from.translation), 
+				XMLoadFloat3(&to.translation), 
+				blendFactor));
+
+		// ‰ñ“]‚ð•âŠÔ
+		XMStoreFloat4(
+			&to.rotation,
+			XMQuaternionNormalize(
+				XMQuaternionSlerp(
+					XMLoadFloat4(&from.rotation),
+					XMLoadFloat4(&to.rotation),
+					blendFactor)));
+
+		// ƒXƒP[ƒ‹‚ð•âŠÔ
+		XMStoreFloat3(
+			&to.scale,
+			XMVectorLerp(
+				XMLoadFloat3(&from.scale),
+				XMLoadFloat3(&to.scale),
+				blendFactor));
+	}
+
+
+	//•âŠ®Œã‚ÌŽp¨‚©‚çeŽqŠÖŒW‚Ìs—ñ‚ðÄŒvŽZ
+	cumulate_transforms(toNodes);
+}

@@ -27,7 +27,7 @@
 // cbuffer PRIMITIVE_JOINT_CONSTANTS
 // {
 //
-//   row_major float4x4 joint_matrices[640];// Offset:    0 Size: 40960
+//   row_major float4x4 joint_matrices[512];// Offset:    0 Size: 32768
 //
 // }
 //
@@ -68,7 +68,7 @@ vs_5_0
 dcl_globalFlags refactoringAllowed | skipOptimization
 dcl_constantbuffer CB0[5], immediateIndexed
 dcl_constantbuffer CB1[4], immediateIndexed
-dcl_constantbuffer CB2[2560], dynamicIndexed
+dcl_constantbuffer CB2[2048], dynamicIndexed
 dcl_input v0.xyz
 dcl_input v1.xyz
 dcl_input v2.xyzw
