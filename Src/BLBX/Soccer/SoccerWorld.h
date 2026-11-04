@@ -1,0 +1,69 @@
+#pragma once
+#include <memory>
+
+#include "Resource/Model/GltfModel.h"
+#include "Graphics/Graphics.h"
+#include "Core/Config.h"
+#include "Core/Transform.h"
+#include "Graphics/Camera/FreeCameraController.h"
+
+#include "Soccer/Stage/Stadium.h"
+#include "Soccer/Ball/SoccerBall.h"
+#include "Soccer/Player/SoccerPlayer.h"
+#include "Soccer/Player/Controller/PlayerController.h"
+#include "Soccer/Player/Movement/PlayerMovement.h"
+#include "Soccer/Player/Dribble/DribbleController.h"
+#include "Soccer/Player/Manager/PlayerManager.h"
+
+#include "Soccer/AI/Core/SoccerAISystem.h"
+
+
+class SoccerWorld
+{
+public:
+	//初期化
+	void Initialize(const PlayerConfig& config);
+
+	//終了化
+	void Finalize();
+
+	//更新
+	void Update(float elapsedTime);
+
+	//描画
+	void Render();
+
+	//ImGui表示
+	void DrawImGui(bool showBall, bool showPlayer);
+
+private:
+	//カメラ
+	FreeCameraController m_freeCamera;
+
+	//スタジアム
+	Stadium m_stadium;
+
+	//ボール
+	SoccerBall m_ball;
+
+	//プレイヤー
+	SoccerPlayer m_player;
+
+	//プレイヤーコントローラー
+	PlayerController m_playerController;
+
+	//ドリブル
+	DribbleController m_dribbleController;
+
+	SoccerAISystem m_soccerAISystem;
+
+private:
+	//Imgui
+	bool m_showDebugUI = true;
+	bool m_showCameraDebug = true;
+	bool m_showStadiumDebug = true;
+	bool m_showSoccerBall = true;
+	bool m_showSoccerPlayer = true;
+};
+
+

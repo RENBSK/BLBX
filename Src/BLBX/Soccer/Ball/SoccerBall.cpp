@@ -71,7 +71,6 @@ void SoccerBall::Render()
 void SoccerBall::DrawImGui()
 {
 #ifdef USE_IMGUI
-    if (ImGui::Begin("Ball Inspector"))
     {
         //ˆÊ’u
         ImGui::DragFloat3(
@@ -132,7 +131,6 @@ void SoccerBall::DrawImGui()
     }
 }
 
-ImGui::End();
 #endif
 }
 

@@ -50,6 +50,8 @@ void Graphics::Finalize()
 		m_immediate_context->Flush();
 	}
 
+	m_primitiveRenderer.reset();
+
 	m_constant_buffer[0].Reset();
 
 	for (auto& state : m_sampler_states)

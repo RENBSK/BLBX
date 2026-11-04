@@ -25,6 +25,11 @@ public:
 		m_transform.position = position;
 	}
 
+	void SetScale(const DirectX::XMFLOAT3& scale)
+	{
+		m_transform.scale = scale;
+	}
+
 	const DirectX::XMFLOAT3& GetPosition() const
 	{
 		return m_transform.position;

@@ -5,9 +5,9 @@ static float GetAbilityScale(AbilityLevel level)
 	switch (level)
 	{
 	case AbilityLevel::Low:
-		return 0.85f;
+		return 0.8f;
 	case AbilityLevel::High:
-		return 1.15f;
+		return 1.2f;
 	case AbilityLevel::Normal:
 		return 1.0f;
 	}
@@ -19,10 +19,9 @@ PlayerParameters BuildPlayerParameters(
 	PlayerParameters parameters{};
 
 	parameters.maxSpeed *= GetAbilityScale(ability.speed);
-
 	parameters.acceleration = GetAbilityScale(ability.explosiveness);
-
 	parameters.ballControl *= GetAbilityScale(ability.technique);
+
 
 	return parameters;
 }

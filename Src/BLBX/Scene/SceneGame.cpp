@@ -8,9 +8,12 @@
 #include <ImGuiCtrl.h>
 #include <imgui.h>
 
+// ========================================
+// 初期化
+// ========================================
 void SceneGame::Initialize()
 {
-	//カメラ
+	//カメラ初期設定
 	m_freeCamera.Initialize(
 		DirectX::XMFLOAT3(-10.0, 15, -0.18),
 		DirectX::XMFLOAT3(9.1, -12.1, -0.12));
@@ -18,29 +21,27 @@ void SceneGame::Initialize()
 	//ステージ
 	m_stadium.Initialize();
 
-    //ボール
-    m_soccerBall.Initialize();
-
-    //プレイヤー
+    //サッカーワールド
     PlayerConfig config;
+    config.modelPath = ("./Data/Model/Character/sin/test.glb");
 
-    //モデルパス
-    config.modelPath = ("./Data/Model/Character/sin/Untitled.glb");
-
-    m_player.SetConfig(config);
-    m_player.Initialize();
+    m_soccerWorld.Initialize(config);
 }
 
+// ========================================
+// 終了化
+// ========================================
 void SceneGame::Finalize()
 {
 	//ステージ
 	m_stadium.Finalize();
-    //ボール
-    m_soccerBall.Finalize();
-    //プレイヤー
-    m_player.Finalize();
+
+    m_soccerWorld.Finalize();
 }
 
+// ========================================
+// 更新
+// ========================================
 void SceneGame::Update(float elapsedTime)
 {
 	//カメラ
@@ -49,19 +50,13 @@ void SceneGame::Update(float elapsedTime)
 	//ステージ
 	m_stadium.Update(elapsedTime);
 
-    //ボール
-    m_soccerBall.Update(elapsedTime);
-
-    //プレイヤー移動
-    m_playerMovement.Update(
-        m_player,
-        m_playerController.GetMoveDirection(),
-        elapsedTime);
-
-    //プレイヤー
-    m_player.Update(elapsedTime);
+    //サッカーワールド
+    m_soccerWorld.Update(elapsedTime);
 }
 
+// ========================================
+// 描画
+// ========================================
 void SceneGame::Render()
 {
 	Camera& camera = Camera::Instance();
@@ -87,13 +82,12 @@ void SceneGame::Render()
 	//ステージ
 	m_stadium.Render();
 
-    //ボール
-    m_soccerBall.Render();
-
-    //プレイヤー
-    m_player.Render();
+    m_soccerWorld.Render();
 }
 
+// ========================================
+// ImGui
+// ========================================
 void SceneGame::DrawGUI()
 {
 #ifdef USE_IMGUI
@@ -150,15 +144,9 @@ void SceneGame::DrawGUI()
             m_stadium.DrawImGui();
         }
 
-        if (m_showSoccerBall)
-        {
-            m_soccerBall.DrawImGui();
-        }
-
-        if (m_showSoccerPlayer)
-        {
-            m_player.DrawImGui();
-        }
+        m_soccerWorld.DrawImGui(
+            m_showSoccerBall,
+            m_showSoccerPlayer);
     }
 
 #endif

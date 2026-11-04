@@ -301,6 +301,13 @@ public:
 		std::vector<node>& animated_nodes
 	);
 
+	//ブレンドアニメーション
+	void BlendPoses(
+		const std::vector<node>& fromNodes,
+		std::vector<node>& toNodes, 
+		float blendFactor);
+
+
 	const std::vector<node>& GetNodes() const { return m_nodes; }
 	const std::vector<animation>& GetAnimations() const { return m_animations; }
 	bool IsStaticBatching() const { return m_static_batching; }
@@ -331,6 +338,7 @@ private:
 
 	std::vector<node> m_nodes;
 
+	
 private:
 	// ============================================================
 	// メンバ変数
