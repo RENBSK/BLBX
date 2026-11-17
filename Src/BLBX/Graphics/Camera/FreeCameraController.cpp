@@ -20,7 +20,7 @@ void FreeCameraController::Initialize(const DirectX::XMFLOAT3& eye, const Direct
 	m_hasInitialTarget = false;
 
 	//ƒ{[ƒ‹‚ÌˆÚ“®—Ê‚É‘Î‚µ‚Ä’Ç‚¤‘¬‚³
-	m_followAmount = 0.6f;
+	m_followAmount = 0.8f;
 	//’Ç‚¢‚Â‚­‘¬‚³
 	m_followSpeed = 3.0f;
 
@@ -29,7 +29,7 @@ void FreeCameraController::Initialize(const DirectX::XMFLOAT3& eye, const Direct
 	m_followMaxX = 2.0f;
 
 	m_followMinZ = -7.0f;
-	m_followMaxZ = 7.0f;
+	m_followMaxZ = 10.0f;
 
 
 	m_eye = eye;

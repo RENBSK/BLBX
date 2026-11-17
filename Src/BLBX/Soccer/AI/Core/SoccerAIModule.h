@@ -33,4 +33,12 @@ public:
 	) = 0;
 
 	virtual void DrawImGui() {};
+
+	virtual const char* GetName() const = 0;
+
+	bool isEnabled() const { return m_enabled; }
+	void SetEnabled(bool enabled) { m_enabled = enabled; }
+
+private:
+	bool m_enabled = true;
 };

@@ -16,6 +16,7 @@ public:
 
 	void DrawImGui() override;
 
+	const char* GetName() const override { return "Attack Wide AI"; }
 
 private:
 	CalAIeva m_calAI;

@@ -85,10 +85,6 @@ void AttackWideAI::SubmitRequests(
 void AttackWideAI::DrawImGui()
 {
 #ifdef USE_IMGUI
-	if (ImGui::CollapsingHeader("Attack Wide AI"))
-	{
 		ImGui::SliderFloat("Forward distance", &m_WodeDistance, -15.0f, 15.0f, "%.2f");
-
-	}
 #endif
 }

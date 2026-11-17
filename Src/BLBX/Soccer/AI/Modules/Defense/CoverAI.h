@@ -19,6 +19,8 @@ public:
 
 	void DrawImGui() override;
 
+	const char* GetName() const override { return "Cover AI"; }
+
 private:
 	float m_MarkDistance = 0.5f;
 	float m_MoveSpeed = 2.5f;

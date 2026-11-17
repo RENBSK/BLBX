@@ -147,8 +147,6 @@ void AttackAupportAI::SubmitRequests(
 void AttackAupportAI::DrawImGui()
 {
 #ifdef USE_IMGUI
-	if (ImGui::CollapsingHeader("Attack Support AI"))
-	{
 		ImGui::SliderFloat("Forward distance", &m_forwardDistance, -8.0f,8.0f, "%.2f");
 
 		ImGui::SliderFloat("Side distance", &m_sideDistance, -6.0f, 6.0f, "%.2f");
@@ -183,6 +181,5 @@ void AttackAupportAI::DrawImGui()
 
 			ImGui::Separator();
 		}
-	}
 #endif
 }

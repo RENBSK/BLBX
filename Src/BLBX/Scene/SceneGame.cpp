@@ -44,6 +44,11 @@ void SceneGame::Finalize()
 // ========================================
 void SceneGame::Update(float elapsedTime)
 {
+    if (m_isPaused)
+    {
+        return;
+    }
+
 	//ÉJÉÅÉâ
 	m_freeCamera.Update(elapsedTime);
 
@@ -127,7 +132,14 @@ void SceneGame::DrawGUI()
                 "Player", nullptr, &m_showSoccerPlayer
             );
 
+
             ImGui::EndMenu();
+        }
+
+
+        if (ImGui::Button(m_isPaused ? "Resume" : "Pause"))
+        {
+            m_isPaused = !m_isPaused;
         }
 
         ImGui::EndMainMenuBar();
