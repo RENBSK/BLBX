@@ -52,6 +52,8 @@ void SceneGame::Update(float elapsedTime)
 
     //サッカーワールド
     m_soccerWorld.Update(elapsedTime);
+
+    m_freeCamera.Follow(m_soccerWorld.GetBallPosition(), elapsedTime);
 }
 
 // ========================================

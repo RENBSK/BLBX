@@ -13,6 +13,7 @@ public:
 		int  TeamNumber,
 		const BlackBoard& blackboard,
 		std::vector<std::unique_ptr<SoccerPlayer>>& players,
+		const std::vector<int>& markTargets,
 		AIMoveResolver& resolver,
 		float elapsedTime) override;
 
@@ -39,4 +40,6 @@ private:
 	CalAIeva m_calAIeva;
 
 	bool m_isSteppingIn[2]{};
+
+	float m_coverWeight = 0.5f;
 };

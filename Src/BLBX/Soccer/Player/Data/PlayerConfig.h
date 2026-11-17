@@ -34,6 +34,10 @@ enum class PlayerAnimationState
 	RightTurn,
 	RightBackTurn,
 	Turn,
+	Pass_Left,		//足が反転している
+	Pass_Right,		//足が反転している
+	Shoot,
+	Jog_Back,
 	Count
 };
 
@@ -75,10 +79,8 @@ struct PlayerConfig
 		AbilityLevel::Normal
 	};
 
-	std::array<
-		AnimationClipSetting,
-		static_cast<size_t>(PlayerAnimationState::Count)
-	> animations{ {
+	std::array<AnimationClipSetting, static_cast<size_t>(PlayerAnimationState::Count)> animations
+	{ {
 		{ "Tpose",         1.0f, true,false,0.2f  },
 		{ "Idle",          1.0f, true,false,0.2f  },
 		{ "Dribble",       1.0f, true,false,0.2f  },
@@ -90,10 +92,13 @@ struct PlayerConfig
 		{ "LeftBackTurn",  1.0f, false,false },
 		{ "RightTurn",     1.0f, false,false },
 		{ "RightBackTurn", 1.0f, false,false },
-		{ "Turn",          1.0f, false,false }
+		{ "Turn",          1.0f, false,false },
+		{ "Pass_Left",     1.0f, false,true,0.2f },
+		{ "Pass_Right",    1.0f, false,true,0.2f},
+		{ "Shoot",    1.0f, false,true,0.2f},
+		{ "Jog_Back",    1.0f, true,false,0.2f},
 	} };
 };
 
 // 能力から内部パラメータを生成
-PlayerParameters BuildPlayerParameters(
-	const PlayerAbility& ability);
+PlayerParameters BuildPlayerParameters(const PlayerAbility& ability);

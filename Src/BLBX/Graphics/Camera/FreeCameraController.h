@@ -13,6 +13,7 @@ public:
 
 	void DrawImgui();
 
+	void Follow(const DirectX::XMFLOAT3& target, float elapsedTime);
 
 private:
 	void ApplyCamera();
@@ -44,4 +45,26 @@ private:
 	int m_prevMouseY = 0;
 
 	float m_wheelSpeed = 1.5f;
+
+	// 追従開始時のカメラ位置とボール位置
+	DirectX::XMFLOAT3 m_followStartEye{};
+	DirectX::XMFLOAT3 m_followStartTarget{};
+
+	bool m_hasFollowTarget = false;
+	bool m_enableFollow = true;
+
+	//ボールの移動量に対して追う速さ
+	float m_followAmount = 0.6f;
+	//追いつく速さ
+	float m_followSpeed = 3.0f;
+
+	//カメラが追いかける範囲
+	float m_followMinX = -2.0f;
+	float m_followMaxX = 2.0f;
+
+	float m_followMinZ = -7.0f;
+	float m_followMaxZ = 7.0f;
+
+	bool m_snapFollow = false;
+	bool m_hasInitialTarget = false;
 };

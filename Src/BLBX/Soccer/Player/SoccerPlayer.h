@@ -22,6 +22,10 @@ public:
 	void DrawImGui() override;
 	//移動
 	void Move(const DirectX::XMFLOAT3& move);
+	//パス
+	bool Pass(SoccerBall& ball, const DirectX::XMFLOAT3& targetPosition, float passSpeed);
+	//シュート
+	bool Shoot(DirectX::XMFLOAT3 GoalPos,SoccerBall& ball,float shootSpeed);
 	//向きを進行方向へ
 	void FaceToMoveDirection(const DirectX::XMFLOAT3& move);
 	//移動関数
@@ -127,5 +131,7 @@ private:
 	int m_TeamNumber = 0;
 	//ボール保持
 	bool m_hasBall = false;
+
+	bool m_passKicked = false;
 
 };

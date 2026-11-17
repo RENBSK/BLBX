@@ -22,5 +22,5 @@ protected:
 	void LoadModel(const char* filename, bool batching);
 
 protected:
-	std::unique_ptr<GltfModel> m_model;
+	std::shared_ptr<GltfModel> m_model;
 };

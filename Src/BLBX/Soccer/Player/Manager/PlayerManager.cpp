@@ -1,5 +1,7 @@
 #include "PlayerManager.h"
 
+#include "Soccer/Ball/SoccerBall.h"
+
 #ifdef USE_IMGUI
 #include <imgui.h>
 #endif
@@ -43,6 +45,11 @@ void PlayerManager::SetBallOwner(int ownerIndex)
 
     sharedBB->Set(BallKeys::OwnerIndex, ownerIndex);
     sharedBB->Set(BallKeys::OwnerTeam, player ? player->GetTeamNumber() : -1);
+
+    if (ownerIndex >= 0)
+    {
+        ClearPass();
+    }
 }
 
 void PlayerManager::Finalize()
@@ -75,7 +82,7 @@ void PlayerManager::Render()
 	}
 }
 
-void PlayerManager::DrawImGui()
+void PlayerManager::DrawImGui(SoccerBall& ball)
 {
 #ifdef USE_IMGUI
     if (players.empty())
@@ -113,13 +120,29 @@ void PlayerManager::DrawImGui()
         "%d",
         ImGuiSliderFlags_AlwaysClamp))
     {
-        sharedBB->Set(BallKeys::OwnerIndex, ownerIndex);
+        /*sharedBB->Set(BallKeys::OwnerIndex, ownerIndex);
 
         SoccerPlayer* owner = GetPlayer(ownerIndex);
 
         sharedBB->Set(
             BallKeys::OwnerTeam,
-            owner ? owner->GetTeamNumber() : -1);
+            owner ? owner->GetTeamNumber() : -1);*/
+
+        SetBallOwner(ownerIndex);
+
+        if (SoccerPlayer* owner = GetPlayer(ownerIndex))
+        {
+            const auto pos = owner->GetPosition();
+            const auto forward = owner->GetForward();
+
+            ball.SetPosition({
+                pos.x + forward.x * 0.2f,
+                ball.GetPosition().y,
+                pos.z + forward.z * 0.2f
+                });
+
+            ball.Stop();
+        }
     }
 
     ImGui::TextDisabled("-1 = None");
@@ -165,5 +188,11 @@ void PlayerManager::DrawImGui()
         ImGui::PopID();
     }
 #endif
+}
+
+void PlayerManager::ClearPass()
+{
+    sharedBB->Set(BallKeys::PassTeam, -1);
+    sharedBB->Set(BallKeys::PassTarget, -1);
 }
 

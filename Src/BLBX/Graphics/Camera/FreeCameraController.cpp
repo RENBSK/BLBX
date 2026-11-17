@@ -6,9 +6,32 @@
 #include <Windows.h>
 
 #include <imgui.h>
+#include <algorithm>
+#include <cmath>
 
 void FreeCameraController::Initialize(const DirectX::XMFLOAT3& eye, const DirectX::XMFLOAT3& focus)
 {
+	m_followStartEye = {};
+	m_followStartTarget = {};
+
+	m_hasFollowTarget = false;
+	m_enableFollow = true;
+	m_snapFollow = false;
+	m_hasInitialTarget = false;
+
+	//ボールの移動量に対して追う速さ
+	m_followAmount = 0.6f;
+	//追いつく速さ
+	m_followSpeed = 3.0f;
+
+	//カメラが追いかける範囲
+	m_followMinX = -2.0f;
+	m_followMaxX = 2.0f;
+
+	m_followMinZ = -7.0f;
+	m_followMaxZ = 7.0f;
+
+
 	m_eye = eye;
 	m_focus = focus;
 
@@ -39,6 +62,12 @@ void FreeCameraController::Initialize(const DirectX::XMFLOAT3& eye, const Direct
 
 void FreeCameraController::Update(float elapsedTime)
 {
+	if (m_enableFollow)
+	{
+		m_mouseRotating = false;
+		return;
+	}
+
 #ifdef USE_IMGUI
 	ImGuiIO& io = ImGui::GetIO();
 
@@ -57,6 +86,8 @@ void FreeCameraController::Update(float elapsedTime)
 	{
 		MoveCamera(elapsedTime);
 	}
+
+
 #else
 	RotateCameraByMouse();
 	MoveCamera(elapsedTime);
@@ -66,7 +97,10 @@ void FreeCameraController::Update(float elapsedTime)
 void FreeCameraController::DrawImgui()
 {
 	// マウスホイールによるズーム
-	MoveByMouseWheel();
+	if (!m_enableFollow)
+	{
+		MoveByMouseWheel();
+	}
 
 	ImGui::SetNextWindowSize(
 		ImVec2(380, 450),
@@ -75,63 +109,67 @@ void FreeCameraController::DrawImgui()
 
 	if (ImGui::Begin("Free Camera"))
 	{
+		if (ImGui::Checkbox("Camera follow", &m_enableFollow))
+		{
+			m_hasFollowTarget = false;
+			m_mouseRotating = false;
+		}
+
+		if (ImGui::Button("Follow Camera"))
+		{
+			// 追従用の配置。今の初期カメラと同じ値
+			SetPreset(
+				{ -10.0f, 15.0f, -0.18f },
+				{ 9.1f, -12.1f, -0.12f },
+				20.0f);
+
+			// 配置したカメラを移動範囲の基準にする
+			m_followStartEye = m_eye;
+
+			// ボールの基準位置はそのまま維持する
+			m_hasFollowTarget = true;
+
+			m_enableFollow = true;
+			m_mouseRotating = false;
+
+			// 次のFollowで現在のボール位置へ即座に合わせる
+			m_snapFollow = true;
+		}
+
+		// この下にある既存の設定を、追従中は操作できなくする
+		ImGui::BeginDisabled(m_enableFollow);
+
 		// =====================================
 		// Camera Presets
 		// =====================================
 		ImGui::SeparatorText("Camera Presets");
 
-		if (ImGui::Button("Stadium View"))
+		if (ImGui::Button("StartPos"))
 		{
 			SetPreset(
-				{ -4.0f, 6.5f, -0.16f },
+				{ -10.0f,15.0f, -0.18f },
 				{ 9.1f, -12.1f, -0.12f },
-				45.0f
+				20.0f
 			);
 		}
 
-		ImGui::SameLine();
-
-		// 少し引いた視点
-		if (ImGui::Button("Wide"))
+		//候補のゲーム画面
+		if (ImGui::Button("PlayGame"))
 		{
 			SetPreset(
-				{ -8.0f, 12.0f, -0.17f },
-				{ 9.1f, -12.1f, -0.12f },
-				45.0f
+				{ 0.13f,12.5f, -15.0f },
+				{ 0.1f, -5.5f, 16.3f },
+				18.0f
 			);
 		}
 
-		ImGui::SameLine();
-
-		// 少し近づいた視点
-		if (ImGui::Button("Close"))
+		//候補のゲーム画面
+		if (ImGui::Button("PlayGame2"))
 		{
 			SetPreset(
-				{ -1.0f, 2.5f, -0.15f },
-				{ 9.1f, -12.1f, -0.12f },
-				45.0f
-			);
-		}
-
-		// 高い位置から見下ろす
-		if (ImGui::Button("High"))
-		{
-			SetPreset(
-				{ -4.0f, 10.5f, -0.16f },
-				{ 9.1f, -12.1f, -0.12f },
-				45.0f
-			);
-		}
-
-		ImGui::SameLine();
-
-		// 低い位置から見る
-		if (ImGui::Button("Low"))
-		{
-			SetPreset(
-				{ -4.0f, 3.5f, -0.16f },
-				{ 12.5f, -8.4f, -0.3f },
-				45.0f
+				{ 0.33,2.6f, -2.5f },
+				{ 1.3f, -12.0f, 30.5f },
+				60.0f
 			);
 		}
 
@@ -227,7 +265,6 @@ void FreeCameraController::DrawImgui()
 
 		ImGui::Spacing();
 		ImGui::Separator();
-
 		// =====================================
 		// Reset
 		// =====================================
@@ -239,9 +276,60 @@ void FreeCameraController::DrawImgui()
 				45.0f
 			);
 		}
+
+		ImGui::EndDisabled();
 	}
 
 	ImGui::End();
+}
+
+void FreeCameraController::Follow(const DirectX::XMFLOAT3& target, float elapsedTime)
+{
+	// OFF中も含め、最初のボール位置を一度だけ記録
+	if (!m_hasInitialTarget)
+	{
+		m_followStartTarget = target;
+		m_hasInitialTarget = true;
+	}
+
+	if (!m_enableFollow || elapsedTime <= 0.0f)
+	{
+		return;
+	}
+
+	if (!m_hasFollowTarget)
+	{
+		m_followStartEye = m_eye;
+		m_hasFollowTarget = true;
+		return;
+	}
+
+	// 開始時からボールが動いた分だけ追いかける
+	const float offsetX =(target.x - m_followStartTarget.x) * m_followAmount;
+
+	const float offsetZ =(target.z - m_followStartTarget.z) * m_followAmount;
+
+	// カメラが動ける量を制限する
+	const float targetX = m_followStartEye.x +std::clamp(offsetX, m_followMinX, m_followMaxX);
+
+	const float targetZ = m_followStartEye.z +std::clamp(offsetZ, m_followMinZ, m_followMaxZ);
+
+	// 制限内の目標位置へ滑らかに移動
+	const float t = m_snapFollow ? 1.0f : 1.0f - std::exp(-m_followSpeed * elapsedTime);
+
+	m_snapFollow = false;
+
+	const float dx = (targetX - m_eye.x) * t;
+	const float dz = (targetZ - m_eye.z) * t;
+
+	m_eye.x += dx;
+	m_eye.z += dz;
+
+	// 注視点も同じだけ動かして、角度を保つ
+	m_focus.x += dx;
+	m_focus.z += dz;
+
+	ApplyCamera();
 }
 
 void FreeCameraController::ApplyCamera()
@@ -474,6 +562,8 @@ void FreeCameraController::SetPreset(
 	m_eye = eye;
 	m_focus = focus;
 	m_fov = fov;
+
+	m_hasFollowTarget = false;
 
 	SyncAnglesFromEyeFocus();
 	ApplyCamera();

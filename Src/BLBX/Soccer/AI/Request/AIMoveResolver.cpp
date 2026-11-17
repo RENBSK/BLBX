@@ -213,11 +213,20 @@ void AIMoveResolver::ResolveAndExecute(std::vector<std::unique_ptr<SoccerPlayer>
 		// ========================================
 		if (command.active)
 		{
-			MovePlayerToPosition(player, command.targetPosition, command.desireMoveSpeed, command.stopDistance, command.mode, elapsedTime);
+			MovePlayerToPosition(
+				player,
+				command.targetPosition,
+				command.desireMoveSpeed,
+				command.stopDistance,
+				command.mode,
+				elapsedTime);
 		}
 		else
 		{
-			player->UpdateMovement({ 0.0f,0.0f,0.0f }, 0.0f, elapsedTime);
+			player->UpdateMovement(
+				{ 0.0f, 0.0f, 0.0f },
+				0.0f,
+				elapsedTime);
 		}
 
 
@@ -264,7 +273,14 @@ void AIMoveResolver::ResolveAndExecute(std::vector<std::unique_ptr<SoccerPlayer>
 	}
 }
 
-void AIMoveResolver::MovePlayerToPosition(SoccerPlayer* player, const DirectX::XMFLOAT3& targetPosition, float moveSpeed, float stopDistance, AIMoveMode mode, float elapsedTime)
+//AIƒvƒŒƒCƒ„[‚ð‚¤‚²‚©‚µ‚Ä‚éŠî”Õ
+void AIMoveResolver::MovePlayerToPosition(
+	SoccerPlayer* player, 
+	const DirectX::XMFLOAT3& targetPosition, 
+	float moveSpeed, 
+	float stopDistance, 
+	AIMoveMode mode, 
+	float elapsedTime)
 {
 	if (!player) return;
 
@@ -305,6 +321,7 @@ void AIMoveResolver::MovePlayerToPosition(SoccerPlayer* player, const DirectX::X
 
 		requestedSpeed = std::min(requestedSpeed, remainDistance / elapsedTime);
 	}
+
 
 	player->UpdateMovement(direction, requestedSpeed, elapsedTime);
 }

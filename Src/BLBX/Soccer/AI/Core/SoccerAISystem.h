@@ -14,6 +14,7 @@
 
 class SoccerPlayer;
 class SoccerBall;
+class PrimitiveRenderer;
 
 class SoccerAISystem
 {
@@ -27,6 +28,16 @@ public:
 		float elapsedTime);
 
 	void DrawImGui();
+
+public:
+	void DrawDebug(
+		PrimitiveRenderer& renderer,
+		const std::vector<std::unique_ptr<SoccerPlayer>>& players) const;
+
+	void DrawDebugOverlay(
+		const std::vector<std::unique_ptr<SoccerPlayer>>& players) const;
+
+	void DrawRequestImGui();
 
 private:
 	void UpdateSharedBlackBoard(const std::vector<std::unique_ptr<SoccerPlayer>>& players,
@@ -42,4 +53,11 @@ private:
 	Meta m_MetaAI;
 
 	std::vector<std::unique_ptr<SoccerAIModule>> m_modules;
+
+	bool m_showRoleLabels = true;
+	bool m_showMoveTargets = true;
+	bool m_showRequestTargets = false;
+
+	// -1なら全選手。Base・Softの詳細表示に使用
+	int m_debugPlayerIndex = -1;
 };

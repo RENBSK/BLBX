@@ -27,6 +27,7 @@ public:
 		int  TeamNumber,
 		const BlackBoard& blackboard,
 		std::vector<std::unique_ptr<SoccerPlayer>>& players,
+		const std::vector<int>& markTargets,
 		AIMoveResolver& resolver,
 		float elapsedTime
 	) = 0;

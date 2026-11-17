@@ -16,6 +16,7 @@ void DefenderAI::SubmitRequests(
 	int TeamNumber, 
 	const BlackBoard& blackboard, 
 	std::vector<std::unique_ptr<SoccerPlayer>>& players,
+	const std::vector<int>& markTargets,
 	AIMoveResolver& resolver, 
 	float elapsedTime)
 {
@@ -28,23 +29,29 @@ void DefenderAI::SubmitRequests(
 	EvaluationDebug& debug = m_evaluationDebug[TeamNumber];
 	debug = EvaluationDebug{};
 
-	const int OwnerIndex = blackboard.Get<int>(BallKeys::OwnerIndex).value_or(-1);
-	const int OwnerTeam = blackboard.Get<int>(BallKeys::OwnerTeam).value_or(-1);
-	const bool hasOwner = OwnerIndex >= 0 && OwnerIndex < static_cast<int>(players.size()) && players[OwnerIndex] != nullptr;
+	const int playerCount = static_cast<int>(players.size());
 
-	//保持者がいない、または自分のチームが保持している
+	/*const int OwnerIndex = blackboard.Get<int>(BallKeys::OwnerIndex).value_or(-1);*/
+
+	int referenceIndex = blackboard.Get<int>(BallKeys::OwnerIndex).value_or(-1);
+
+	if (referenceIndex < 0)
+	{
+		referenceIndex = blackboard.Get<int>(BallKeys::PassTarget).value_or(-1);
+	}
+
+
+	const int OwnerTeam = blackboard.Get<int>(BallKeys::OwnerTeam).value_or(-1);
+	const bool hasOwner = referenceIndex >= 0 && referenceIndex < static_cast<int>(players.size()) && players[referenceIndex] != nullptr;
+
+	//守備する状況が終わったら、このチームの状態を解除
 	if (!hasOwner || TeamNumber == OwnerTeam)
 	{
 		for (int i = 0; i < static_cast<int>(players.size()); ++i)
 		{
-			if (!players[i])
+			if (players[i] &&
+				players[i]->GetTeamNumber() == TeamNumber)
 			{
-				continue;
-			}
-
-			if (players[i]->GetTeamNumber() == TeamNumber)
-			{
-				//データを削除
 				m_states.erase(i);
 			}
 		}
@@ -52,102 +59,168 @@ void DefenderAI::SubmitRequests(
 		return;
 	}
 
-	int bestIndex = blackboard.Get<int>(PlayerKeys::PressPlayerIndex).value_or(-1);
 
 
-	//良いプレイヤーがいなければ
-	if (bestIndex < 0)
+	const auto GoalPos = blackboard.Get<DirectX::XMFLOAT3>(TeamKeys::DefendGoalPosition);
+
+	if (!GoalPos)
 	{
 		return;
 	}
 
-
-	//反応速度を無理やり付ける
-	DefenderState& state = m_states[bestIndex];
-	state.timer += elapsedTime;
-
-	if (!state.hasTarget || state.timer >= m_TargetUpdateInterval)
+	//このチームの守備選手全員を調べる
+	for (int playerIndex = 0; playerIndex < playerCount; ++playerIndex)
 	{
-		const DirectX::XMFLOAT3 GoalPos =
-			blackboard.Get<DirectX::XMFLOAT3>(TeamKeys::DefendGoalPosition).value_or(DirectX::XMFLOAT3{});
-
-		DirectX::XMFLOAT3 OwnerPos = players[OwnerIndex]->GetPosition();
-
-		//ボール保持者から守るゴール方向への方向
-		DirectX::XMFLOAT3 targetDirection =
+		if (!players[playerIndex] || players[playerIndex]->GetTeamNumber() != TeamNumber)
 		{
-			GoalPos.x - OwnerPos.x,
-			0.0f,
-			GoalPos.z - OwnerPos.z
-		};
+			continue;
+		}
 
-		
-
-		//ボール保持者が後ろを向いているなら少し詰める。
-		float goalLength = std::sqrt(targetDirection.x * targetDirection.x + targetDirection.z * targetDirection.z);
-		targetDirection.x /= goalLength;
-		targetDirection.z /= goalLength;
-
-		DirectX::XMFLOAT3 forward = players[OwnerIndex]->GetForward();
-		float forwardLength = std::sqrt(forward.x * forward.x + forward.z * forward.z);
-		forward.x /= forwardLength;
-		forward.z /= forwardLength;
-
-		float dot = forward.x * targetDirection.x + forward.z * targetDirection.z;
-
-		dot = std::clamp(dot, -1.0f, 1.0f);
-
-		const float threshold = std::cos(DirectX::XMConvertToRadians(m_PressAngle));
-
-		const float markDistance = dot < threshold ? m_PressDistance : m_MarkDistance;
-
-		const DirectX::XMVECTOR targetVec = DirectX::XMVector3Normalize(DirectX::XMLoadFloat3(&targetDirection));
-		DirectX::XMFLOAT3 markOffset;
-		DirectX::XMStoreFloat3(&markOffset, DirectX::XMVectorScale(targetVec, markDistance));
-
-		state.targetPosition =
+		if (playerIndex >= static_cast<int>(markTargets.size()))
 		{
-			OwnerPos.x + markOffset.x,
-			players[bestIndex]->GetPosition().y,
-			OwnerPos.z + markOffset.z
-		};
+			m_states.erase(playerIndex);
+			continue;
+		}
 
-		state.timer = 0.0f;
-		state.hasTarget = true;
+		const int targetIndex = markTargets[playerIndex];
+
+		//有効な相手選手を担当しているか確認
+		if (targetIndex < 0 ||
+			targetIndex >= playerCount ||
+			!players[targetIndex] ||
+			players[targetIndex]->GetTeamNumber() == TeamNumber)
+		{
+			m_states.erase(playerIndex);
+			continue;
+		}
+
+		const bool targetHasBall = targetIndex == referenceIndex;
+
+		DefenderState& state = m_states[playerIndex];
+
+		// 担当や保持状態が変わったら、キャッシュを解除
+		if (state.targetIndex != targetIndex ||
+			state.targetHasBall != targetHasBall)
+		{
+			state = DefenderState{};
+		}
+
+		state.timer += elapsedTime;
+
+		if (!state.hasTarget ||
+			state.timer >= m_TargetUpdateInterval)
+		{
+			// 自分がマークする相手の位置
+			const auto targetPos =
+				players[targetIndex]->GetPosition();
+
+			// マーク相手から、自分たちのゴールへの方向
+			DirectX::XMFLOAT3 targetDirection =
+			{
+				GoalPos->x - targetPos.x,
+				0.0f,
+				GoalPos->z - targetPos.z
+			};
+
+			const float goalLength = std::sqrt(
+				targetDirection.x * targetDirection.x +
+				targetDirection.z * targetDirection.z);
+
+			if (goalLength <= 0.00001f)
+			{
+				m_states.erase(playerIndex);
+				continue;
+			}
+
+			targetDirection.x /= goalLength;
+			targetDirection.z /= goalLength;
+
+			// 全員共通の基本間合い
+			float markDistance = m_MarkDistance;
+
+			// 保持者を担当している場合だけ、向きで間合いを調整
+			if (targetHasBall)
+			{
+				auto forward = players[targetIndex]->GetForward();
+
+				const float forwardLength = std::sqrt(
+					forward.x * forward.x +
+					forward.z * forward.z);
+
+				if (forwardLength > 0.00001f)
+				{
+					forward.x /= forwardLength;
+					forward.z /= forwardLength;
+
+					const float dot = std::clamp(
+						forward.x * targetDirection.x +
+						forward.z * targetDirection.z,
+						-1.0f,
+						1.0f);
+
+					const float threshold = std::cos(
+						DirectX::XMConvertToRadians(m_PressAngle));
+
+					if (dot < threshold)
+					{
+						markDistance = m_PressDistance;
+					}
+				}
+			}
+
+			// 自分の相手のゴール側へ目標を作る
+			state.targetPosition =
+			{
+				targetPos.x + targetDirection.x * markDistance,
+				players[playerIndex]->GetPosition().y,
+				targetPos.z + targetDirection.z * markDistance
+			};
+
+			state.targetIndex = targetIndex;
+			state.targetHasBall = targetHasBall;
+			state.timer = 0.0f;
+			state.hasTarget = true;
+		}
+
+		float moveSpeed = m_MoveSpeed;
+		Evaluation evaluation{};
+
+		// 既存の保持者用評価は、保持者担当に適用
+		if (targetHasBall)
+		{
+			evaluation = m_calAIeva.Calculation(
+				blackboard,
+				players,
+				playerIndex,
+				elapsedTime);
+
+			moveSpeed =
+				m_MoveSpeed * (0.7f + 0.3f * evaluation.urgency);
+
+			evaluation.Movespeed = moveSpeed;
+
+			debug.active = true;
+			debug.playerIndex = playerIndex;
+			debug.evaluation = evaluation;
+		}
+
+		AIMoveRequest request{};
+		request.active = true;
+
+		request.type = AIMoveRequestType::Base;
+		request.reason = AIMoveReason::Mark;
+		request.mode = AIMoveMode::Arrive;
+
+		request.priority = 30;
+		request.utility = evaluation.utility;
+		request.urgency = evaluation.urgency;
+
+		request.targetPosition = state.targetPosition;
+		request.moveSpeed = moveSpeed;
+		request.stopDistance = 0.05f;
+
+		resolver.Submit(playerIndex, request);
 	}
-
-
-
-	Evaluation evaluation = m_calAIeva.Calculation(blackboard, players, bestIndex, elapsedTime);
-
-	evaluation.Movespeed = m_MoveSpeed * (0.1f + 0.3f * evaluation.urgency);
-	
-	debug.active = true;
-	debug.playerIndex = bestIndex;
-	debug.evaluation = evaluation;
-
-	//リクエスト
-	AIMoveRequest request{};
-	request.active = true;
-
-	request.type = AIMoveRequestType::Action;
-	request.reason = AIMoveReason::Mark;
-	request.mode = AIMoveMode::Arrive;
-
-
-	request.priority = 30;
-	request.utility = evaluation.utility;
-	request.urgency = evaluation.urgency;
-
-	request.confirmationTime = 0.2f;
-
-	request.targetPosition = state.targetPosition;
-
-	request.moveSpeed = evaluation.Movespeed;
-
-	request.stopDistance = 0.05f;
-
-	resolver.Submit(bestIndex, request);
 }
 
 void DefenderAI::DrawImGui()

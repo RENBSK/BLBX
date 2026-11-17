@@ -53,9 +53,11 @@
     <ClCompile Include="Src\BLBX\Soccer\AI\Core\SoccerAISystem.cpp" />
     <ClCompile Include="Src\BLBX\Soccer\AI\Meta\Meta.cpp" />
     <ClCompile Include="Src\BLBX\Soccer\AI\Modules\Attack\AttackSupportAI.cpp" />
+    <ClCompile Include="Src\BLBX\Soccer\AI\Modules\Attack\AttackWideAI.cpp" />
     <ClCompile Include="Src\BLBX\Soccer\AI\Modules\CalAIeva.cpp" />
     <ClCompile Include="Src\BLBX\Soccer\AI\Modules\Defense\CoverAI.cpp" />
     <ClCompile Include="Src\BLBX\Soccer\AI\Modules\Defense\DefenderAI.cpp" />
+    <ClCompile Include="Src\BLBX\Soccer\AI\Modules\FreeBall\FreeBallAI.cpp" />
     <ClCompile Include="Src\BLBX\Soccer\AI\Request\AIMoveResolver.cpp" />
     <ClCompile Include="Src\BLBX\Soccer\Ball\SoccerBall.cpp" />
     <ClCompile Include="Src\BLBX\Soccer\Player\Controller\PlayerController.cpp" />
@@ -114,9 +116,11 @@
     <ClInclude Include="Src\BLBX\Soccer\AI\Keys\BlackBoardKeys.h" />
     <ClInclude Include="Src\BLBX\Soccer\AI\Meta\Meta.h" />
     <ClInclude Include="Src\BLBX\Soccer\AI\Modules\Attack\AttackSupportAI.h" />
+    <ClInclude Include="Src\BLBX\Soccer\AI\Modules\Attack\AttackWideAI.h" />
     <ClInclude Include="Src\BLBX\Soccer\AI\Modules\CalAIeva.h" />
     <ClInclude Include="Src\BLBX\Soccer\AI\Modules\Defense\CoverAI.h" />
     <ClInclude Include="Src\BLBX\Soccer\AI\Modules\Defense\DefenderAI.h" />
+    <ClInclude Include="Src\BLBX\Soccer\AI\Modules\FreeBall\FreeBallAI.h" />
     <ClInclude Include="Src\BLBX\Soccer\AI\Request\AIMoveRequest.h" />
     <ClInclude Include="Src\BLBX\Soccer\AI\Request\AIMoveResolver.h" />
     <ClInclude Include="Src\BLBX\Soccer\Ball\SoccerBall.h" />
