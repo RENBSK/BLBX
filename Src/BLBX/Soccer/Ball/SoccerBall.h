@@ -15,9 +15,14 @@ public:
 	void Render() override;
 	void DrawImGui() override;
 
+	//物理処理
+	void BounceOffWalls();
+
 	//ドリブル
 	void SetDribbleVelocity(
 		const DirectX::XMFLOAT3& velocity);
+	//パス
+	void Kick(const DirectX::XMFLOAT3& velocity);
 	//完全停止
 	void Stop();
 	//移動速度の取得
@@ -38,4 +43,7 @@ private:
 
 	// 移動時の減速
 	float m_friction = 1.0f;
+
+	//反射係数
+	float m_restitution = 0.8f;
 };

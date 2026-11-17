@@ -15,6 +15,7 @@ void CoverAI::SubmitRequests(
 	int TeamNumber, 
 	const BlackBoard& blackboard, 
 	std::vector<std::unique_ptr<SoccerPlayer>>& players,
+	const std::vector<int>& markTargets,
 	AIMoveResolver& resolver, 
 	float elapsedTime)
 {
@@ -29,7 +30,7 @@ void CoverAI::SubmitRequests(
 
 	int SupportIndex = blackboard.Get<int>(PlayerKeys::DefenceCoverIndex).value_or(-1);
 
-	int OwnerIndex = blackboard.Get<int>(BallKeys::OwnerIndex).value_or(-1);
+	/*int OwnerIndex = blackboard.Get<int>(BallKeys::OwnerIndex).value_or(-1);*/
 
 	if (SupportIndex < 0)	
 	{
@@ -39,18 +40,27 @@ void CoverAI::SubmitRequests(
 	DirectX::XMFLOAT3 GoalPosition =
 		blackboard.Get<DirectX::XMFLOAT3>(TeamKeys::DefendGoalPosition).value_or(DirectX::XMFLOAT3{});
 
-	if (OwnerIndex < 0)
+	int referenceIndex = blackboard.Get<int>(BallKeys::OwnerIndex).value_or(-1);
+
+	if (referenceIndex < 0)
+	{
+		referenceIndex = blackboard.Get<int>(BallKeys::PassTarget).value_or(-1);
+	}
+
+	if (referenceIndex < 0 ||
+		referenceIndex >= static_cast<int>(players.size()) ||
+		!players[referenceIndex])
 	{
 		return;
 	}
 
-	DirectX::XMFLOAT3 OwnerPosition = players[OwnerIndex]->GetPosition();
+	DirectX::XMFLOAT3 referencePos = players[referenceIndex]->GetPosition();
 
 	DirectX::XMFLOAT3 GoalToPlayerVec =
 	{
-		OwnerPosition.x - GoalPosition.x,
+		referencePos.x - GoalPosition.x,
 		0.0,
-		OwnerPosition.z - GoalPosition.z
+		referencePos.z - GoalPosition.z
 	};
 
 	DirectX::XMVECTOR targetVec = DirectX::XMVector3Normalize(DirectX::XMLoadFloat3(&GoalToPlayerVec));
@@ -80,7 +90,7 @@ void CoverAI::SubmitRequests(
 	if (markIndex >= 0 && players[markIndex])
 	{
 		// Cover自身が進路を塞げている度合い
-		markCoverage = m_calAIeva.CalculationCover(OwnerPosition,players[markIndex]->GetPosition(),GoalPosition);
+		markCoverage = m_calAIeva.CalculationCover(referencePos,players[markIndex]->GetPosition(),GoalPosition);
 	}
 
 	// 位置を修正する必要度
@@ -115,9 +125,9 @@ void CoverAI::SubmitRequests(
 	{
 		DirectX::XMFLOAT3 targetDirection =
 		{
-			GoalPosition.x - OwnerPosition.x,
+			GoalPosition.x - referencePos.x,
 			0.0f,
-			GoalPosition.z - OwnerPosition.z
+			GoalPosition.z - referencePos.z
 		};
 
 		const DirectX::XMVECTOR targetVec = DirectX::XMVector3Normalize(DirectX::XMLoadFloat3(&targetDirection));
@@ -126,9 +136,9 @@ void CoverAI::SubmitRequests(
 
 		target =
 		{
-			OwnerPosition.x + markOffset.x,
+			referencePos.x + markOffset.x,
 			players[SupportIndex]->GetPosition().y,
-			OwnerPosition.z + markOffset.z
+			referencePos.z + markOffset.z
 		};
 	}
 
@@ -146,9 +156,11 @@ void CoverAI::SubmitRequests(
 	AIMoveRequest request;
 	request.active = true;
 
-	request.type = AIMoveRequestType::Action;
+	request.type = isSteppingIn ? AIMoveRequestType::Action : AIMoveRequestType::Soft;
 	request.reason = AIMoveReason::Cover;
 	request.mode = AIMoveMode::Arrive;
+
+	request.weight = m_coverWeight;
 
 	request.priority = 45;
 	request.utility = evaluation.utility;
@@ -175,6 +187,7 @@ void CoverAI::DrawImGui()
 	{
 		ImGui::DragFloat("Mark distance", &m_MarkDistance, 0.1f, 0.1f,10.0f, "%.2f");
 		ImGui::SliderFloat("Move speed", &m_MoveSpeed, 0.0f, 10.0f, "%.2f");
+		ImGui::SliderFloat("Cover weight", &m_coverWeight, 0.0f, 5.0f, "%.2f");
 
 		m_calAIeva.DrawImGui();
 

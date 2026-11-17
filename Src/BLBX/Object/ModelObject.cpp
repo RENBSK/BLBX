@@ -6,6 +6,10 @@
 
 #include "Graphics/Debug/D3D11DebugUtil.h"
 
+#include <unordered_map>
+#include <memory>
+#include <string>
+
 ModelObject::~ModelObject()
 {
 	Finalize();
@@ -13,15 +17,16 @@ ModelObject::~ModelObject()
 
 void ModelObject::Finalize()
 {
-	ID3D11DeviceContext* context = Graphics::Instance().GetContext();
+	ID3D11DeviceContext* context =
+		Graphics::Instance().GetContext();
 
-	D3D11DebugUtil::ClearPipeline(context);
-
-	if (m_model)
+	if (context)
 	{
-		m_model->Finalize();
-		m_model.reset();
+		D3D11DebugUtil::ClearPipeline(context);
 	}
+
+	// 自分が持つ参照だけを解除
+	m_model.reset();
 }
 
 void ModelObject::Render()
@@ -38,9 +43,36 @@ void ModelObject::LoadModel(const char* filename, bool batching)
 {
 	Finalize();
 
-	m_model = std::make_unique<GltfModel>(
+	// 生成済みモデルを共有するためのキャッシュ
+	static std::unordered_map<
+		std::string,
+		std::shared_ptr<GltfModel>
+	> modelCache;
+
+	// 同じファイルでもバッチング設定が違えば別モデル
+	std::string key = std::string(filename)
+		+ (batching ? "|batch" : "|normal");
+
+	auto it = modelCache.find(key);
+
+	if (it != modelCache.end())
+	{
+		// 生成済みモデルを使う
+		m_model = it->second;
+
+		OutputDebugStringA("GltfModel Cache HIT\n");
+		return;
+	}
+
+	// 初回のみモデルを生成
+	m_model = std::make_shared<GltfModel>(
 		Graphics::Instance().GetDevice(),
 		filename,
 		batching
 	);
+
+	// キャッシュに保存
+	modelCache.emplace(key, m_model);
+
+	OutputDebugStringA("GltfModel Cache MISS\n");
 }

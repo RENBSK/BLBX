@@ -8,6 +8,8 @@
 #include <memory>
 #include <vector>
 
+class SoccerBall;
+
 class PlayerManager
 {
 private:
@@ -33,7 +35,9 @@ public:
 
 	void Render();
 
-	void DrawImGui();
+	void DrawImGui(SoccerBall& ball);
+
+	void ClearPass();
 
 	void CreateTeam(int teamNumber, int playerCount,const PlayerConfig& config);
 

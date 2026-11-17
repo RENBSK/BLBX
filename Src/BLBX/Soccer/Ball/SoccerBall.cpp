@@ -9,11 +9,11 @@
 
 void SoccerBall::Initialize()
 {
-	LoadModel("./Data/Model/Ball/soccer_ball.glb", true);
+	LoadModel("./Data/Model/Ball/ball.gltf", true);
 
-	m_transform.position = { 0.0f,m_ground,0.0f };
+    m_transform.position = { 0.09f,m_ground,-0.1f };
 	m_transform.rotation = { 0.0f,0.0f,0.0f };
-	m_transform.scale = { 0.6f,0.6f,0.6f };
+	m_transform.scale = { 0.0015f,0.0015f,0.0015f };
 
     Stop();
 }
@@ -48,8 +48,7 @@ void SoccerBall::Update(float elapsedTime)
     }
 
     // …•½•ûŒü‚ÌŒ¸‘¬
-    float damping = std::max(
-        0.0f, 1.0f - m_friction * elapsedTime);
+    float damping = std::max(0.0f, 1.0f - m_friction * elapsedTime);
 
     m_velocity.x *= damping;
     m_velocity.z *= damping;
@@ -61,11 +60,13 @@ void SoccerBall::Update(float elapsedTime)
         m_velocity.x = 0.0f;
         m_velocity.z = 0.0f;
     }
+
+    BounceOffWalls();
 }
 
 void SoccerBall::Render()
 {
-	ModelObject::Render();
+    ModelObject::Render();
 }
 
 void SoccerBall::DrawImGui()
@@ -86,52 +87,98 @@ void SoccerBall::DrawImGui()
             0.001f,
             1.0f);
 
-    // Physics
-    if (ImGui::CollapsingHeader(
-        "Physics", ImGuiTreeNodeFlags_DefaultOpen))
-    {
-        ImGui::Checkbox("Use Gravity", &m_useGravity);
-
-        ImGui::DragFloat(
-            "Ground Y",
-            &m_ground,
-            0.001f);
-
-        if (m_useGravity)
+        // Physics
+        if (ImGui::CollapsingHeader(
+            "Physics", ImGuiTreeNodeFlags_DefaultOpen))
         {
+            ImGui::Checkbox("Use Gravity", &m_useGravity);
+
             ImGui::DragFloat(
-                "Gravity",
-                &m_gravity,
-                0.1f,
-                -30.0f,
-                0.0f);
+                "Ground Y",
+                &m_ground,
+                0.001f);
+
+            if (m_useGravity)
+            {
+                ImGui::DragFloat(
+                    "Gravity",
+                    &m_gravity,
+                    0.1f,
+                    -30.0f,
+                    0.0f);
+            }
+
+            ImGui::DragFloat(
+                "Friction",
+                &m_friction,
+                0.05f,
+                0.0f,
+                10.0f);
         }
 
-        ImGui::DragFloat(
-            "Friction",
-            &m_friction,
-            0.05f,
-            0.0f,
-            10.0f);
-    }
-
-    // Debug
-    if (ImGui::CollapsingHeader("Debug"))
-    {
-        ImGui::Text(
-            "Velocity: %.3f, %.3f, %.3f",
-            m_velocity.x,
-            m_velocity.y,
-            m_velocity.z);
-
-        if (ImGui::Button("Stop Ball"))
+        // Debug
+        if (ImGui::CollapsingHeader("Debug"))
         {
-            Stop();
+            ImGui::Text(
+                "Velocity: %.3f, %.3f, %.3f",
+                m_velocity.x,
+                m_velocity.y,
+                m_velocity.z);
+
+            if (ImGui::Button("Stop Ball"))
+            {
+                Stop();
+            }
         }
     }
-}
 
 #endif
+}
+
+void SoccerBall::BounceOffWalls()
+{
+    //‚±‚ê‚ª•Ç‚ÌÀ•W
+    {
+        constexpr float minX = -5.4f;
+        constexpr float maxX = 5.6f;
+        constexpr float minZ = 0.0f;
+        constexpr float maxZ = 10.45f;
+        constexpr float margin = 0.2f;
+    }
+
+
+    //¶‰E‚Ì•Ç
+    if ((m_transform.position.x > 5.6f && m_velocity.x > 0.0f) ||
+        (m_transform.position.x < -5.4f && m_velocity.x < 0.0f))
+    {
+        m_velocity.x = -m_velocity.x * m_restitution;
+    }
+
+    m_transform.position.x = std::clamp(m_transform.position.x, -5.4f, 5.6f);
+
+    const bool insideGoalWidth = m_transform.position.x >= -0.6f && m_transform.position.x <= 0.8f;
+
+    //‰œ‚Ì•Ç
+    if ((m_transform.position.z > 10.45f)&&insideGoalWidth)
+    {
+        m_transform.position.z = 10.45f;
+
+        if (m_velocity.z > 0.0f)
+        {
+            m_velocity.z = -m_velocity.z * m_restitution;
+        }
+    }
+    else if (m_transform.position.z > 10.8)
+    {
+        m_transform.position.z = 10.8f;
+        if (m_velocity.z > 0.0f)
+        {
+            m_velocity.z = -m_velocity.z * m_restitution;
+        }
+
+    }
+
+
 }
 
 void SoccerBall::SetDribbleVelocity(const DirectX::XMFLOAT3& velocity)
@@ -139,6 +186,11 @@ void SoccerBall::SetDribbleVelocity(const DirectX::XMFLOAT3& velocity)
     m_velocity.x = velocity.x;
     m_velocity.y = 0.0f;
     m_velocity.z = velocity.z;
+}
+
+void SoccerBall::Kick(const DirectX::XMFLOAT3& velocity)
+{
+    m_velocity = velocity;
 }
 
 void SoccerBall::Stop()

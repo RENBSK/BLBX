@@ -72,6 +72,7 @@ void PlayerMovement::Update(
             moveDirection.z * speed
         };
 
+
         player.FaceToMoveDirection(moveDirection);
     }
     else
@@ -88,12 +89,13 @@ void PlayerMovement::Update(
 
     if (player.IsAutoAnimationEnabled() )
     {
-        const bool justStopped = !hasInput && previousSpeed > 0.01f;
+        const bool justStopped = !hasInput && previousSpeed > maxSpeed * 0.5f;
 
         if (justStopped)
         {
             // Ž~‚Ü‚Á‚½uŠÔ‚¾‚¯ŠJŽn
             player.ChangeAnimation(PlayerAnimationState::StopRuning, false);
+
         }
         else if (speed > 0.01f)
         {

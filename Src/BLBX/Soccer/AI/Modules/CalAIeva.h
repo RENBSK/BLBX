@@ -43,6 +43,40 @@ public:
 		const DirectX::XMFLOAT3& playerPos,
 		const DirectX::XMFLOAT3& goalPos);
 
+	float CalcPassSpace(
+		const DirectX::XMFLOAT3& OwnerPos, 
+		const DirectX::XMFLOAT3& targetPos, 
+		const std::vector<std::unique_ptr<SoccerPlayer>>& players, 
+		int TeamNumber);
+
+	float CalcMarkThreat(
+		const DirectX::XMFLOAT3& opponentPos,
+		const DirectX::XMFLOAT3& goalPos,
+		bool hasBall);
+
+	float CalcMarkCost(
+		const DirectX::XMFLOAT3& defenderPos,
+		const DirectX::XMFLOAT3& opponentPos,
+		const DirectX::XMFLOAT3& goalPos,
+		float threat);
+	
+	//味方のプレイヤーの役割の負担を計算
+	std::vector<std::vector<float>> CalcAttackCost(
+		const DirectX::XMFLOAT3& Apos,
+		const DirectX::XMFLOAT3& Bpos,
+		const DirectX::XMFLOAT3& OwnerPos,
+		const DirectX::XMFLOAT3& GoalPos);
+
+	std::vector<std::vector<float>> CalcAttackCost(
+		const DirectX::XMFLOAT3& Apos,
+		const DirectX::XMFLOAT3& Bpos,
+		const DirectX::XMFLOAT3& OwnerPos,
+		const DirectX::XMFLOAT3& GoalPos,
+		const BlackBoard& blackboard,
+		const std::vector<std::unique_ptr<SoccerPlayer>>& players);
+
+	DirectX::XMFLOAT3 ClampToPitch(DirectX::XMFLOAT3 pos);
+
 	void DrawImGui();
 
 private:

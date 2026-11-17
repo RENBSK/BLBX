@@ -12,6 +12,7 @@ public:
 		int  TeamNumber,
 		const BlackBoard& blackboard,
 		std::vector<std::unique_ptr<SoccerPlayer>>& players,
+		const std::vector<int>& markTargets,
 		AIMoveResolver& resolver,
 		float elapsedTime) override;
 
@@ -22,6 +23,13 @@ private:
 	{
 		float timer = 0.0f;
 		bool hasTarget = false;
+
+		//前回、誰をマークしていたか
+		int  targetIndex = -1;
+
+		//前回、その相手が保持者だったか
+		bool targetHasBall = false;
+
 		DirectX::XMFLOAT3 targetPosition{};
 	};
 

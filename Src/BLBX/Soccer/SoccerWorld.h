@@ -17,6 +17,7 @@
 
 #include "Soccer/AI/Core/SoccerAISystem.h"
 
+#define PLAYER_COUNT 3
 
 class SoccerWorld
 {
@@ -36,7 +37,35 @@ public:
 	//ImGui表示
 	void DrawImGui(bool showBall, bool showPlayer);
 
+	//操作プレイヤーの更新処理
+	void UpdateBallOwner();
+
+	//パス更新処理
+	void UpdatePass(float elapsedTime);
+
+	//パス相手を探す
+	int FinPassTarget(SoccerPlayer& player);
+
+	void UpdateKickoff();
+
+	
+	void PlacePlayers();
+
+	DirectX::XMFLOAT3 GetBallPosition() const
+	{
+		return m_ball.GetPosition();
+	}
+
+
 private:
+	enum class MatchPhase
+	{
+		KickOff,
+		Playing
+	};
+
+	MatchPhase m_matchPhase = MatchPhase::KickOff;
+
 	//カメラ
 	FreeCameraController m_freeCamera;
 
@@ -64,6 +93,10 @@ private:
 	bool m_showStadiumDebug = true;
 	bool m_showSoccerBall = true;
 	bool m_showSoccerPlayer = true;
+
+	float m_passElapsed = 0.0f;
+
+	int m_kickoffTargetIndex = -1;
 };
 
 

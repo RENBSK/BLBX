@@ -4,7 +4,8 @@
 
 void Stadium::Initialize()
 {
-	LoadModel("./Data/Model/futsal_court/scene.glb", true);
+	LoadModel("./Data/Model/futsal_court/test.glb", true);
+	//LoadModel("C:/Users/2240216/Desktop/external/estadio_unico_madre_de_ciudades/Soccer.RK.glb", true);
 
 	m_transform.position = { 0.105f,0.64f,-0.11f };
 	m_transform.rotation = { 0.0f,0.0f,0.0f };

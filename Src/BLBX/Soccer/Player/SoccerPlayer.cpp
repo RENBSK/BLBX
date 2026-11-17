@@ -1,4 +1,6 @@
 #include "SoccerPlayer.h"
+#include "Soccer/Ball/SoccerBall.h"
+
 #include "Graphics/Graphics.h"
 
 #include <algorithm>
@@ -30,6 +32,9 @@ void SoccerPlayer::Initialize()
 	m_parameters = BuildPlayerParameters(m_config.ability);
 
 	m_animationTime = 0.0f;
+
+
+    m_passKicked = false;
 }
 
 void SoccerPlayer::Finalize()
@@ -87,13 +92,10 @@ void SoccerPlayer::Update(float elapsedTime)
     // ========================================
     // アニメーション終了判定
     // ========================================
-    const auto& setting = m_config.animations[
-        static_cast<size_t>(m_animationState)];
+    const auto& setting = m_config.animations[static_cast<size_t>(m_animationState)];
 
     // 操作ロック付きアニメーションの終了後はIdleへ戻す
-    if (m_autoAnimation &&
-        setting.lockControl &&
-        m_animationFinished)
+    if (m_autoAnimation && setting.lockControl && m_animationFinished)
     {
         ChangeAnimation(PlayerAnimationState::Idle, false);
     }
@@ -134,6 +136,72 @@ void SoccerPlayer::Move(const DirectX::XMFLOAT3& move)
 	m_transform.position.z += scaleMove.z;
 }
 
+bool SoccerPlayer::Pass(
+    SoccerBall& ball, 
+    const DirectX::XMFLOAT3& targetPosition, 
+    float passSpeed)
+{
+    if (passSpeed <= 0.0f)
+    {
+        return false;
+    }
+
+    const DirectX::XMFLOAT3 BallPos = ball.GetPosition();
+    float dx = targetPosition.x - BallPos.x;
+    float dz = targetPosition.z - BallPos.z;
+
+    const float distance = std::sqrt(dx * dx + dz * dz);
+
+    if (distance < 0.00001f)
+    {
+        return false;
+    }
+
+    if (GetAnimationState() != PlayerAnimationState::Pass_Right)
+    {
+        ChangeAnimation(PlayerAnimationState::Pass_Right, false);
+        m_passKicked = false;
+    }
+
+    //仮でアニメションの35%で蹴る
+    constexpr float kickPhase = 0.30f;
+
+    if (GetAnimationPhase() < kickPhase||m_passKicked)
+    {
+        return false;
+    }
+
+    const float scale = passSpeed / distance;
+
+    ball.Kick({ dx * scale,0.0f,dz * scale });
+    m_passKicked = true;
+    return true;
+}
+
+bool SoccerPlayer::Shoot(DirectX::XMFLOAT3 GoalPos, SoccerBall& ball, float shootSpeed)
+{
+    if (!GetHasBall() || shootSpeed <= 0.0f)
+    {
+        return false;
+    }
+
+    ChangeAnimation(PlayerAnimationState::Shoot, false);
+
+    //仮でアニメションの35%で蹴る
+    constexpr float kickPhase = 0.30f;
+
+    if (GetAnimationPhase() < kickPhase)
+    {
+        return false;
+    }
+
+    const auto forward = GetForward();
+
+
+    ball.Kick({ forward.x * shootSpeed,0.0f,forward.z * shootSpeed });
+    return true;
+}
+
 void SoccerPlayer::FaceToMoveDirection(const DirectX::XMFLOAT3& move)
 {
 	float lengthSq = move.x * move.x + move.z * move.z;
@@ -149,7 +217,10 @@ void SoccerPlayer::FaceToMoveDirection(const DirectX::XMFLOAT3& move)
 	m_transform.rotation.y = yaw;
 }
 
-void SoccerPlayer::UpdateMovement(const DirectX::XMFLOAT3& direction, float moveSpeed, float elapsedTime)
+void SoccerPlayer::UpdateMovement(
+    const DirectX::XMFLOAT3& direction, 
+    float moveSpeed, 
+    float elapsedTime)
 {
     m_Playermovement.Update(*this, direction, moveSpeed, elapsedTime);
 }
@@ -160,8 +231,7 @@ void SoccerPlayer::UpdateAnimation(float elapsedTime)
 	const auto& animation = m_model->GetAnimations();
 
     // 現在のアニメーション設定を取得
-	const auto& setting = m_config.animations[
-		static_cast<size_t>(m_animationState)];
+    const auto& setting = m_config.animations[static_cast<size_t>(m_animationState)];
 
     // ========================================
     // アニメーションの検索・時間更新
@@ -249,8 +319,7 @@ void SoccerPlayer::ChangeAnimation(PlayerAnimationState state,bool restart)
     // ========================================
     // ブレンドの準備
     // ========================================
-	const AnimationClipSetting& setting =
-		m_config.animations[static_cast<size_t>(state)];
+    const AnimationClipSetting& setting = m_config.animations[static_cast<size_t>(state)];
 
 	m_blendDuration = setting.blendDuration;
 	m_blendTime = 0.0f;

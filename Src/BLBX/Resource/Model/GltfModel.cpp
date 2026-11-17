@@ -6,6 +6,9 @@
 #include <algorithm>
 #include <cstring>
 #include <WICTextureLoader.h>
+#include <unordered_map>
+#include <memory>
+#include <stdexcept>
 
 #define TINYGLTF_IMPLEMENTATION
 #define TINYGLTF_NO_EXTERNAL_IMAGE
@@ -17,30 +20,205 @@
 #include "Graphics/Shader/Shader.h"
 #include "Graphics/Resource/Texture.h"
 
+
+#include <chrono>
+#include <cstdio>
+#include <Windows.h>
+using Clock = std::chrono::steady_clock;
+
+auto totalStart = Clock::now();
+auto last = totalStart;
+
+auto LogTime = [&](const char* name)
+	{
+		auto now = Clock::now();
+
+		double ms = std::chrono::duration<double, std::milli>(
+			now - last
+		).count();
+
+		char buffer[256];
+		sprintf_s(buffer, "%s : %.2f ms\n", name, ms);
+		OutputDebugStringA(buffer);
+
+		last = now;
+	};
+
+
 bool _null_load_image_data(tinygltf::Image*, const int, std::string*, std::string*, int, int, const unsigned char*, int, void*)
 {
 	return true;
 }
-GltfModel::GltfModel(ID3D11Device* device, const std::string& filename, bool static_batching) : m_filename(filename), m_static_batching(static_batching)
+//GltfModel::GltfModel(ID3D11Device* device, const std::string& filename, bool static_batching) : m_filename(filename), m_static_batching(static_batching)
+//{
+//	//読み込み済みのgltfデータを保存
+//	static std::unordered_map < std::string, std::shared_ptr<tinygltf::Model>> modelCache;
+//
+//	std::shared_ptr<tinygltf::Model> cachedModel;
+//
+//	auto it = modelCache.find(filename);
+//
+//	if (it != modelCache.end())
+//	{
+//		cachedModel = it->second;
+//	}
+//	else
+//	{
+//		cachedModel = std::make_shared<tinygltf::Model>();
+//
+//		tinygltf::TinyGLTF loader;
+//		loader.SetImageLoader(_null_load_image_data, nullptr);
+//
+//		std::string error, warning;
+//		bool succeeded = false;
+//		if (filename.find(".glb") != std::string::npos)
+//		{
+//			succeeded = loader.LoadBinaryFromFile(
+//				cachedModel.get(), &error, &warning,
+//				filename.c_str());
+//		}
+//		else if (filename.find(".gltf") != std::string::npos)
+//		{
+//			succeeded = loader.LoadASCIIFromFile(
+//				cachedModel.get(), &error, &warning,
+//				filename.c_str());
+//		}
+//
+//		_ASSERT_EXPR_A(warning.empty(), warning.c_str());
+//		_ASSERT_EXPR_A(error.empty(), error.c_str());
+//
+//		if (!succeeded)
+//		{
+//			throw std::runtime_error("Failed to load glTF: " + filename);
+//		}
+//
+//		modelCache.emplace(filename, cachedModel);
+//	}
+//
+//	// 以下は元の処理をそのまま使う
+//	tinygltf::Model& gltf_model = *cachedModel;
+//
+//	for (const tinygltf::Scene& gltf_scene : gltf_model.scenes)
+//	{
+//		scene& scene = m_scenes.emplace_back();
+//		scene.name = gltf_scene.name;
+//		scene.nodes = gltf_scene.nodes;
+//	}
+//
+//	m_default_scene =
+//		gltf_model.defaultScene < 0 ? 0 : gltf_model.defaultScene;
+//
+//	fetch_nodes(gltf_model);
+//	fetch_materials(gltf_model);
+//	fetch_textures(gltf_model);
+//
+//	if (m_static_batching)
+//	{
+//		fetch_and_batch_meshes(gltf_model);
+//	}
+//	else
+//	{
+//		fetch_meshes(gltf_model);
+//		fetch_animations(gltf_model);
+//	}
+//
+//	create_and_upload_resources(device);
+//
+//
+//}
+
+
+GltfModel::GltfModel(
+	ID3D11Device* device,
+	const std::string& filename,
+	bool static_batching)
+	: m_filename(filename),
+	m_static_batching(static_batching)
 {
-	tinygltf::TinyGLTF tiny_gltf;
-	tiny_gltf.SetImageLoader(_null_load_image_data, nullptr);
+	using Clock = std::chrono::steady_clock;
 
-	tinygltf::Model gltf_model;
-	std::string error, warning;
-	bool succeeded = false;
-	if (filename.find(".glb") != std::string::npos)
+	auto totalStart = Clock::now();
+	auto last = totalStart;
+
+	auto LogTime = [&](const char* name)
+		{
+			auto now = Clock::now();
+
+			double ms = std::chrono::duration<double, std::milli>(
+				now - last
+			).count();
+
+			char buffer[256];
+			sprintf_s(buffer, "%s : %.2f ms\n", name, ms);
+			OutputDebugStringA(buffer);
+
+			last = now;
+		};
+
+	// 読み込み開始ログ
 	{
-		succeeded = tiny_gltf.LoadBinaryFromFile(&gltf_model, &error, &warning, filename.c_str());
-	}
-	else if (filename.find(".gltf") != std::string::npos)
-	{
-		succeeded = tiny_gltf.LoadASCIIFromFile(&gltf_model, &error, &warning, filename.c_str());
+		char buffer[512];
+		sprintf_s(buffer, "\n===== GLTF: %s (batching=%d) =====\n",
+			filename.c_str(), static_batching ? 1 : 0);
+		OutputDebugStringA(buffer);
 	}
 
-	_ASSERT_EXPR_A(warning.empty(), warning.c_str());
-	_ASSERT_EXPR_A(error.empty(), error.c_str());
-	_ASSERT_EXPR_A(succeeded, L"Failed to load glTF file");
+	// 読み込み済みのglTFデータを保存
+	static std::unordered_map<
+		std::string,
+		std::shared_ptr<tinygltf::Model>
+	> modelCache;
+
+	std::shared_ptr<tinygltf::Model> cachedModel;
+
+	auto it = modelCache.find(filename);
+
+	if (it != modelCache.end())
+	{
+		cachedModel = it->second;
+		OutputDebugStringA("Cache HIT\n");
+	}
+	else
+	{
+		OutputDebugStringA("Cache MISS\n");
+
+		cachedModel = std::make_shared<tinygltf::Model>();
+
+		tinygltf::TinyGLTF loader;
+		loader.SetImageLoader(_null_load_image_data, nullptr);
+
+		std::string error, warning;
+		bool succeeded = false;
+
+		if (filename.find(".glb") != std::string::npos)
+		{
+			succeeded = loader.LoadBinaryFromFile(
+				cachedModel.get(), &error, &warning,
+				filename.c_str());
+		}
+		else if (filename.find(".gltf") != std::string::npos)
+		{
+			succeeded = loader.LoadASCIIFromFile(
+				cachedModel.get(), &error, &warning,
+				filename.c_str());
+		}
+
+		_ASSERT_EXPR_A(warning.empty(), warning.c_str());
+		_ASSERT_EXPR_A(error.empty(), error.c_str());
+
+		if (!succeeded)
+		{
+			throw std::runtime_error(
+				"Failed to load glTF: " + filename);
+		}
+
+		modelCache.emplace(filename, cachedModel);
+	}
+
+	LogTime("File Parsing / Cache");
+
+	// 以下は元の処理
+	tinygltf::Model& gltf_model = *cachedModel;
 
 	for (const tinygltf::Scene& gltf_scene : gltf_model.scenes)
 	{
@@ -48,24 +226,50 @@ GltfModel::GltfModel(ID3D11Device* device, const std::string& filename, bool sta
 		scene.name = gltf_scene.name;
 		scene.nodes = gltf_scene.nodes;
 	}
-	m_default_scene = gltf_model.defaultScene < 0 ? 0 : gltf_model.defaultScene;
+
+	m_default_scene =
+		gltf_model.defaultScene < 0 ? 0 : gltf_model.defaultScene;
 
 	fetch_nodes(gltf_model);
+	LogTime("Nodes");
+
 	fetch_materials(gltf_model);
+	LogTime("Materials");
+
 	fetch_textures(gltf_model);
+	LogTime("Textures");
 
 	if (m_static_batching)
 	{
 		fetch_and_batch_meshes(gltf_model);
+		LogTime("Batch Meshes");
 	}
 	else
 	{
 		fetch_meshes(gltf_model);
+		LogTime("Meshes");
+
 		fetch_animations(gltf_model);
+		LogTime("Animations");
 	}
 
 	create_and_upload_resources(device);
+	LogTime("GPU Resources");
+
+	// 合計時間
+	auto totalEnd = Clock::now();
+
+	double totalMs =
+		std::chrono::duration<double, std::milli>(
+			totalEnd - totalStart
+		).count();
+
+	char buffer[256];
+	sprintf_s(buffer, "TOTAL : %.2f ms\n\n", totalMs);
+	OutputDebugStringA(buffer);
 }
+
+
 GltfModel::~GltfModel()
 {
 	Finalize();
@@ -808,6 +1012,28 @@ void GltfModel::create_and_upload_resources(ID3D11Device* device)
 	D3D11_BUFFER_DESC buffer_desc = {};
 	D3D11_SUBRESOURCE_DATA subresource_data = {};
 
+
+	using Clock = std::chrono::steady_clock;
+
+	auto totalStart = Clock::now();
+	auto last = totalStart;
+
+	auto LogTime = [&](const char* name)
+		{
+			auto now = Clock::now();
+
+			double ms = std::chrono::duration<double, std::milli>(
+				now - last
+			).count();
+
+			char buffer[256];
+			sprintf_s(buffer, "%s : %.2f ms\n", name, ms);
+			OutputDebugStringA(buffer);
+
+			last = now;
+		};
+
+
 	// Create and upload vertex and index m_buffers on GPU
 	if (m_static_batching)
 	{
@@ -894,6 +1120,7 @@ void GltfModel::create_and_upload_resources(ID3D11Device* device)
 			}
 		}
 	}
+	LogTime("Vertex / Index Buffers");
 
 	// Create and upload m_materials on GPU
 	std::vector<material::cbuffer> material_data;
@@ -919,45 +1146,82 @@ void GltfModel::create_and_upload_resources(ID3D11Device* device)
 	shader_resource_view_desc.Buffer.NumElements = static_cast<UINT>(material_data.size());
 	hr = device->CreateShaderResourceView(material_buffer.Get(), &shader_resource_view_desc, m_material_resource_view.GetAddressOf());
 	_ASSERT_EXPR(SUCCEEDED(hr), hr_trace(hr));
+	LogTime("Material Resources");
 
-	// Create and upload m_textures on GPU
-	for (image& image : m_images)
+	using TextureSRV =
+		Microsoft::WRL::ComPtr<ID3D11ShaderResourceView>;
+
+	// テクスチャキャッシュ
+	static std::unordered_map<
+		std::string,
+		std::vector<TextureSRV>
+	> textureCache;
+
+	auto it = textureCache.find(m_filename);
+
+	if (it != textureCache.end())
 	{
-		if (image.cache_data.size() > 0)
+		// キャッシュ済みのテクスチャを再利用
+		m_texture_resource_views = it->second;
+
+		for (image& image : m_images)
 		{
-			ID3D11ShaderResourceView* texture_resource_view = NULL;
-			hr = load_texture_from_memory(device, image.cache_data.data(), image.cache_data.size(), &texture_resource_view);
-			if (hr == S_OK)
-			{
-				m_texture_resource_views.emplace_back().Attach(texture_resource_view);
-			}
 			image.cache_data.clear();
 		}
-		else
+
+		OutputDebugStringA("Texture Cache HIT\n");
+	}
+	else
+	{
+		OutputDebugStringA("Texture Cache MISS\n");
+		// Create and upload m_textures on GPU
+		for (image& image : m_images)
 		{
-			const std::filesystem::path path(m_filename);
-
-			std::wstring textureFilename =
-				path.parent_path().wstring() +
-				L"/" +
-				std::wstring(image.uri.begin(), image.uri.end());
-
-			Microsoft::WRL::ComPtr<ID3D11Resource> resource;
-			Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> srv;
-
-			hr = DirectX::CreateWICTextureFromFile(
-				device,
-				textureFilename.c_str(),
-				resource.GetAddressOf(),
-				srv.GetAddressOf()
-			);
-
-			if (SUCCEEDED(hr))
+			if (image.cache_data.size() > 0)
 			{
-				m_texture_resource_views.push_back(srv);
+				ID3D11ShaderResourceView* texture_resource_view = NULL;
+				hr = load_texture_from_memory(device, image.cache_data.data(), image.cache_data.size(), &texture_resource_view);
+				if (hr == S_OK)
+				{
+					m_texture_resource_views.emplace_back().Attach(texture_resource_view);
+				}
+				image.cache_data.clear();
+			}
+			else
+			{
+				const std::filesystem::path path(m_filename);
+
+				std::wstring textureFilename =
+					path.parent_path().wstring() +
+					L"/" +
+					std::wstring(image.uri.begin(), image.uri.end());
+
+				Microsoft::WRL::ComPtr<ID3D11Resource> resource;
+				Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> srv;
+
+				hr = DirectX::CreateWICTextureFromFile(
+					device,
+					textureFilename.c_str(),
+					resource.GetAddressOf(),
+					srv.GetAddressOf()
+				);
+
+				if (SUCCEEDED(hr))
+				{
+					m_texture_resource_views.push_back(srv);
+				}
 			}
 		}
+		// 全テクスチャが正常に生成された場合に保存
+		if (m_texture_resource_views.size() == m_images.size())
+		{
+			textureCache.emplace(
+				m_filename,
+				m_texture_resource_views
+			);
+		}
 	}
+	LogTime("Textures Upload");
 
 	if (m_static_batching)
 	{
@@ -984,6 +1248,8 @@ void GltfModel::create_and_upload_resources(ID3D11Device* device)
 		create_vs_from_cso(device, "./Data/Shader/GltfModel_vs.cso", m_vertex_shader.ReleaseAndGetAddressOf(), m_input_layout.ReleaseAndGetAddressOf(), input_element_desc, _countof(input_element_desc));
 	}
 	create_ps_from_cso(device, "./Data/Shader/GltfModel_ps.cso", m_pixel_shader.ReleaseAndGetAddressOf());
+
+	LogTime("Shaders");
 
 	// Create sampler states
 	D3D11_SAMPLER_DESC sampler_desc = {};
@@ -1015,6 +1281,7 @@ void GltfModel::create_and_upload_resources(ID3D11Device* device)
 	sampler_desc.MaxAnisotropy = 16;
 	hr = device->CreateSamplerState(&sampler_desc, m_sampler_states[2].ReleaseAndGetAddressOf());
 	_ASSERT_EXPR(SUCCEEDED(hr), hr_trace(hr));
+	LogTime("Sampler States");
 
 	buffer_desc.ByteWidth = sizeof(primitive_constants);
 	buffer_desc.Usage = D3D11_USAGE_DEFAULT;
@@ -1033,6 +1300,7 @@ void GltfModel::create_and_upload_resources(ID3D11Device* device)
 	buffer_desc.StructureByteStride = 0;
 	hr = device->CreateBuffer(&buffer_desc, NULL, m_primitive_joint_cbuffer.ReleaseAndGetAddressOf());
 	_ASSERT_EXPR(SUCCEEDED(hr), hr_trace(hr));
+	LogTime("Constant Buffers");
 }
 
 void GltfModel::render(ID3D11DeviceContext* immediate_context, const DirectX::XMFLOAT4X4& world, const std::vector<node>& animated_nodes/*UNIT.37*/)
