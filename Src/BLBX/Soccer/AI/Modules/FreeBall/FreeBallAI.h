@@ -18,4 +18,6 @@ public:
 		float elapsedTime) override;
 
 	void DrawImGui() override;
+
+	const char* GetName() const override { return "Free Ball AI"; }
 };

@@ -60,4 +60,7 @@ private:
 
 	// -1なら全選手。Base・Softの詳細表示に使用
 	int m_debugPlayerIndex = -1;
+
+	//Meta機能の切り替え
+	bool m_enableMeta = true;
 };

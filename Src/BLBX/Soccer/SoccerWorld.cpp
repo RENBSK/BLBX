@@ -69,6 +69,18 @@ void SoccerWorld::Update(float elapsedTime)
     //É{Å[ÉãéÊìæ
     UpdateBallOwner();
 
+    const int ownerIndex = bb.Get<int>(BallKeys::OwnerIndex).value_or(-1);
+
+    SoccerPlayer* owner = manager.GetPlayer(ownerIndex);
+
+    const int currentControlPlayer = bb.Get<int>(PlayerKeys::ControlledIndex).value_or(-1);
+
+    if (owner && owner->GetTeamNumber() == 0 && currentControlPlayer != ownerIndex)
+    {
+        bb.Set(PlayerKeys::ControlledIndex, ownerIndex);
+        m_dribbleController.Reset();
+    }
+
     const int ControledIndex = bb.Get<int>(PlayerKeys::ControlledIndex).value_or(-1);
 
     SoccerPlayer* player = manager.GetPlayer(ControledIndex);
@@ -163,6 +175,7 @@ void SoccerWorld::DrawImGui(bool showBall, bool showPlayer)
             {
                 ImGui::PushID("Players");
                 PlayerManager::Instance().DrawImGui(m_ball);
+                m_playerController.DrawImgui();
                 ImGui::PopID();
 
                 ImGui::EndTabItem();

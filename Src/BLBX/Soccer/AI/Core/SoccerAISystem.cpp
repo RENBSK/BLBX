@@ -77,7 +77,10 @@ void SoccerAISystem::Update(std::vector<std::unique_ptr<SoccerPlayer>>& players,
 	UpdateSharedBlackBoard(players, *ball, sharedBB);
 
 	//チーム方針を更新
-	m_MetaAI.Update(sharedBB, m_allyTeamBB, m_enemyTeamBB, players, elapsedTime);
+	if (m_enableMeta)
+	{
+		m_MetaAI.Update(sharedBB, m_allyTeamBB, m_enemyTeamBB, players, elapsedTime);
+	}
 
 	//両チームについて、各Moduleから要求する
 	for (int teamNumber = 0; teamNumber < 2; ++teamNumber)
@@ -86,7 +89,7 @@ void SoccerAISystem::Update(std::vector<std::unique_ptr<SoccerPlayer>>& players,
 
 		for (auto& module : m_modules)
 		{
-			if (!module)
+			if (!module || !module->isEnabled())
 			{
 				continue;
 			}
@@ -98,7 +101,6 @@ void SoccerAISystem::Update(std::vector<std::unique_ptr<SoccerPlayer>>& players,
 				m_MetaAI.GetMarkTargets(),
 				m_moveResolver,
 				elapsedTime);
-
 		}
 	}
 
@@ -120,6 +122,8 @@ void SoccerAISystem::DrawImGui()
 	ImGui::InputInt(
 		"Detail player (-1 = all)",
 		&m_debugPlayerIndex);
+
+	ImGui::Checkbox("Enable Meta", &m_enableMeta);
 
 	const int lastIndex =
 		static_cast<int>(m_moveResolver.GetDebugInfos().size()) - 1;
@@ -143,7 +147,21 @@ void SoccerAISystem::DrawImGui()
 		}
 
 		ImGui::PushID(module.get());
-		module->DrawImGui();
+
+		bool enabled = module->isEnabled();
+
+		if (ImGui::Checkbox("##Enabled", &enabled))
+		{
+			module->SetEnabled(enabled);
+		}
+
+		ImGui::SameLine();
+
+		if (ImGui::CollapsingHeader(module->GetName()))
+		{
+			module->DrawImGui();
+		}
+
 		ImGui::PopID();
 	}
 #endif

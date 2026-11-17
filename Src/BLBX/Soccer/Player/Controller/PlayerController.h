@@ -18,7 +18,12 @@ public:
 		const DirectX::XMFLOAT3 GoalPos,
 		float elapsedTime);
 
-
 	//“ü—Í•ûŒü‚ðŽæ‚é
 	DirectX::XMFLOAT3 GetMoveDirection() const;
+
+	void DrawImgui();
+
+private:
+	float m_passSpeed=10.0f;
+	float m_shootSpeed=10.0f;
 };

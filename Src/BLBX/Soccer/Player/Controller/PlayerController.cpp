@@ -6,6 +6,9 @@
 #include "Soccer/Player/Dribble/DribbleController.h"
 
 #include <Windows.h>
+#ifdef USE_IMGUI
+#include <imgui.h>
+#endif
 
 bool PlayerController::Update(
 	SoccerPlayer& player, 
@@ -45,11 +48,11 @@ bool PlayerController::Update(
 
 	if (isShooting || (shootInput && !isPassing))
 	{
-		kicked = player.Shoot(GoalPos, ball, 20.0f);
+		kicked = player.Shoot(GoalPos, ball, m_shootSpeed);
 	}
 	else if ((passInput || isPassing) && passTarget && passTarget != &player)
 	{
-		kicked = player.Pass(ball, passTarget->GetPosition(), 10.0f);
+		kicked = player.Pass(ball, passTarget->GetPosition(), m_passSpeed);
 	}
 
 	if (kicked)
@@ -118,4 +121,17 @@ DirectX::XMFLOAT3 PlayerController::GetMoveDirection() const
 	XMStoreFloat3(&move, MoveVec);
 
 	return move;
+}
+
+void PlayerController::DrawImgui()
+{
+#ifdef USE_IMGUI
+	ImGui::SliderFloat(
+		"Pass speed", &m_passSpeed,
+		1.0f, 30.0f, "%.1f");
+
+	ImGui::SliderFloat(
+		"Shoot speed", &m_shootSpeed,
+		1.0f, 30.0f, "%.1f");
+#endif
 }

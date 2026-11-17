@@ -31,8 +31,6 @@ void DefenderAI::SubmitRequests(
 
 	const int playerCount = static_cast<int>(players.size());
 
-	/*const int OwnerIndex = blackboard.Get<int>(BallKeys::OwnerIndex).value_or(-1);*/
-
 	int referenceIndex = blackboard.Get<int>(BallKeys::OwnerIndex).value_or(-1);
 
 	if (referenceIndex < 0)
@@ -42,7 +40,7 @@ void DefenderAI::SubmitRequests(
 
 
 	const int OwnerTeam = blackboard.Get<int>(BallKeys::OwnerTeam).value_or(-1);
-	const bool hasOwner = referenceIndex >= 0 && referenceIndex < static_cast<int>(players.size()) && players[referenceIndex] != nullptr;
+	const bool hasOwner = referenceIndex >= 0 && referenceIndex < playerCount && players[referenceIndex] != nullptr;
 
 	//守備する状況が終わったら、このチームの状態を解除
 	if (!hasOwner || TeamNumber == OwnerTeam)
@@ -99,32 +97,23 @@ void DefenderAI::SubmitRequests(
 		DefenderState& state = m_states[playerIndex];
 
 		// 担当や保持状態が変わったら、キャッシュを解除
-		if (state.targetIndex != targetIndex ||
-			state.targetHasBall != targetHasBall)
+		if (state.targetIndex != targetIndex || state.targetHasBall != targetHasBall)
 		{
 			state = DefenderState{};
 		}
 
 		state.timer += elapsedTime;
 
-		if (!state.hasTarget ||
-			state.timer >= m_TargetUpdateInterval)
+		if (!state.hasTarget ||state.timer >= m_TargetUpdateInterval)
 		{
 			// 自分がマークする相手の位置
-			const auto targetPos =
-				players[targetIndex]->GetPosition();
+			const auto targetPos =players[targetIndex]->GetPosition();
 
 			// マーク相手から、自分たちのゴールへの方向
-			DirectX::XMFLOAT3 targetDirection =
-			{
-				GoalPos->x - targetPos.x,
-				0.0f,
-				GoalPos->z - targetPos.z
-			};
+			float dx = GoalPos->x - targetPos.x;
+			float dz = GoalPos->z - targetPos.z;
 
-			const float goalLength = std::sqrt(
-				targetDirection.x * targetDirection.x +
-				targetDirection.z * targetDirection.z);
+			const float goalLength = std::sqrt(dx * dx + dz * dz);
 
 			if (goalLength <= 0.00001f)
 			{
@@ -132,8 +121,8 @@ void DefenderAI::SubmitRequests(
 				continue;
 			}
 
-			targetDirection.x /= goalLength;
-			targetDirection.z /= goalLength;
+			dx /= goalLength;
+			dz /= goalLength;
 
 			// 全員共通の基本間合い
 			float markDistance = m_MarkDistance;
@@ -143,9 +132,7 @@ void DefenderAI::SubmitRequests(
 			{
 				auto forward = players[targetIndex]->GetForward();
 
-				const float forwardLength = std::sqrt(
-					forward.x * forward.x +
-					forward.z * forward.z);
+				const float forwardLength = std::sqrt(forward.x * forward.x + forward.z * forward.z);
 
 				if (forwardLength > 0.00001f)
 				{
@@ -153,13 +140,12 @@ void DefenderAI::SubmitRequests(
 					forward.z /= forwardLength;
 
 					const float dot = std::clamp(
-						forward.x * targetDirection.x +
-						forward.z * targetDirection.z,
+						forward.x * dx +
+						forward.z * dz,
 						-1.0f,
 						1.0f);
 
-					const float threshold = std::cos(
-						DirectX::XMConvertToRadians(m_PressAngle));
+					const float threshold = std::cos(DirectX::XMConvertToRadians(m_PressAngle));
 
 					if (dot < threshold)
 					{
@@ -171,9 +157,9 @@ void DefenderAI::SubmitRequests(
 			// 自分の相手のゴール側へ目標を作る
 			state.targetPosition =
 			{
-				targetPos.x + targetDirection.x * markDistance,
+				targetPos.x + dx * markDistance,
 				players[playerIndex]->GetPosition().y,
-				targetPos.z + targetDirection.z * markDistance
+				targetPos.z + dz * markDistance
 			};
 
 			state.targetIndex = targetIndex;
@@ -194,8 +180,8 @@ void DefenderAI::SubmitRequests(
 				playerIndex,
 				elapsedTime);
 
-			moveSpeed =
-				m_MoveSpeed * (0.7f + 0.3f * evaluation.urgency);
+			//移動速度は七割参照
+			moveSpeed =m_MoveSpeed * (0.7f + 0.3f * evaluation.urgency);
 
 			evaluation.Movespeed = moveSpeed;
 
@@ -217,7 +203,7 @@ void DefenderAI::SubmitRequests(
 
 		request.targetPosition = state.targetPosition;
 		request.moveSpeed = moveSpeed;
-		request.stopDistance = 0.05f;
+		request.stopDistance = targetHasBall ? 0.05f : 0.5f;
 
 		resolver.Submit(playerIndex, request);
 	}
@@ -226,9 +212,6 @@ void DefenderAI::SubmitRequests(
 void DefenderAI::DrawImGui()
 {
 #ifdef USE_IMGUI
-	if (ImGui::CollapsingHeader(
-		"Defender AI"))
-	{
 		ImGui::SliderFloat(
 			"Mark distance", &m_MarkDistance, 0.1f, 3.0f, "%.2f");
 
@@ -331,7 +314,5 @@ void DefenderAI::DrawImGui()
 			ImGui::TreePop();
 		}
 
-
-	}
 #endif
 }

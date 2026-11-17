@@ -88,7 +88,7 @@ private:
 	PressAssignmentState m_pressStates[2];
 
 	//’S“–Œğ‘ã‚ğŒˆs‚·‚é‚Ü‚Å‚ÌŠÔ
-	float m_PressSwitchTimer = 2.0f;
+	float m_PressSwitchTimer = 0.3f;
 
 	CalAIeva m_calAIeva;
 

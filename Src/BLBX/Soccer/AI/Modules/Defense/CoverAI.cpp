@@ -182,9 +182,7 @@ void CoverAI::SubmitRequests(
 void CoverAI::DrawImGui()
 {
 #ifdef USE_IMGUI
-	if (ImGui::CollapsingHeader(
-		"DefenceSupport AI"))
-	{
+
 		ImGui::DragFloat("Mark distance", &m_MarkDistance, 0.1f, 0.1f,10.0f, "%.2f");
 		ImGui::SliderFloat("Move speed", &m_MoveSpeed, 0.0f, 10.0f, "%.2f");
 		ImGui::SliderFloat("Cover weight", &m_coverWeight, 0.0f, 5.0f, "%.2f");
@@ -231,6 +229,5 @@ void CoverAI::DrawImGui()
 
 			ImGui::TreePop();
 		}
-	}
 #endif
 }

@@ -52,4 +52,6 @@ private:
 	bool m_showStadiumDebug = true;
 	bool m_showSoccerBall = true;
 	bool m_showSoccerPlayer = true;
+
+	bool m_isPaused = false;
 };

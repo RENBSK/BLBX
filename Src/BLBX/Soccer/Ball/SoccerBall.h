@@ -17,7 +17,8 @@ public:
 
 	//•¨—ˆ—
 	void BounceOffWalls();
-
+	//ƒS[ƒ‹
+	void Goal();
 	//ƒhƒŠƒuƒ‹
 	void SetDribbleVelocity(
 		const DirectX::XMFLOAT3& velocity);
@@ -46,4 +47,17 @@ private:
 
 	//”½ËŒW”
 	float m_restitution = 0.8f;
+
+	DirectX::XMFLOAT3 m_previousPosition{};
+
+	float m_rollRadius = 0.1f;
+
+	float minX = -5.4f;
+	float maxX = 5.6f;
+	float minZ = 0.0f;
+	float maxZ = 10.45f;
+	float margin = 0.2f;
+
+	float insideGoalMinX = -0.6f;
+	float insideGoalMaxX = 0.8f;
 };

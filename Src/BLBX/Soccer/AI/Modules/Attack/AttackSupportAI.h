@@ -18,6 +18,8 @@ public:
 
 	void DrawImGui() override;
 
+	const char* GetName() const override { return "Attack Support AI"; }
+
 private:
 	CalAIeva m_calAIeva;
 

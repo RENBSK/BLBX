@@ -1,5 +1,7 @@
 #include "SoccerBall.h"
 
+#include "Graphics/Graphics.h"
+
 #include <algorithm>
 #include <cmath>
 
@@ -14,6 +16,17 @@ void SoccerBall::Initialize()
     m_transform.position = { 0.09f,m_ground,-0.1f };
 	m_transform.rotation = { 0.0f,0.0f,0.0f };
 	m_transform.scale = { 0.0015f,0.0015f,0.0015f };
+
+    minX = -5.4f;
+    maxX = 5.6f;
+    minZ = 0.0f;
+    maxZ = 10.45f;
+    margin = 0.2f;
+
+    insideGoalMinX = -0.6f;
+    insideGoalMaxX = 0.8f;
+
+    m_previousPosition = m_transform.position;
 
     Stop();
 }
@@ -61,17 +74,81 @@ void SoccerBall::Update(float elapsedTime)
         m_velocity.z = 0.0f;
     }
 
+    const float dx = m_transform.position.x - m_previousPosition.x;
+    const float dz = m_transform.position.z - m_previousPosition.z;
+
+    m_transform.rotation.x += dz / m_rollRadius;
+    m_transform.rotation.z -= dx / m_rollRadius;
+
+    m_previousPosition = m_transform.position;
+
     BounceOffWalls();
 }
 
 void SoccerBall::Render()
 {
-    ModelObject::Render();
+    if (!m_model)
+    {
+        return;
+    }
+
+    // このモデルに入っている、球の中心のずれ
+    constexpr float modelCenterY = 65.8606567f;
+
+    // 中心を原点へ戻してから回転し、元の高さへ戻す
+    const auto matrix =
+        DirectX::XMMatrixTranslation(0.0f, -modelCenterY, 0.0f) *
+        m_transform.GetMatrix() *
+        DirectX::XMMatrixTranslation(
+            0.0f, modelCenterY * m_transform.scale.y, 0.0f);
+
+    DirectX::XMFLOAT4X4 world;
+    DirectX::XMStoreFloat4x4(&world, matrix);
+
+    m_model->render(
+        Graphics::Instance().GetContext(),
+        world);
 }
 
 void SoccerBall::DrawImGui()
 {
 #ifdef USE_IMGUI
+
+    if (ImGui::CollapsingHeader("Pitch bounds"))
+    {
+        // 左側・右側を一行で調整
+        ImGui::DragFloatRange2(
+            "X range",
+            &minX, &maxX,
+            0.05f, -20.0f, 20.0f,
+            "Min: %.2f", "Max: %.2f");
+
+        // 手前側・奥側を一行で調整
+        ImGui::DragFloatRange2(
+            "Z range",
+            &minZ, &maxZ,
+            0.05f, -20.0f, 20.0f,
+            "Min: %.2f", "Max: %.2f");
+
+        ImGui::DragFloat(
+            "Edge margin",
+            &margin, 0.01f, 0.0f, 1.0f, "%.2f");
+
+        ImGui::Separator();
+
+        // 結果の大きさも表示
+        ImGui::Text("Width : %.2f", maxX - minX);
+        ImGui::Text("Length: %.2f", maxZ - minZ);
+
+        ImGui::Text(
+            "Usable X: %.2f ~ %.2f",
+            minX + margin, maxX - margin);
+
+        ImGui::Text(
+            "Usable Z: %.2f ~ %.2f",
+            minZ + margin, maxZ - margin);
+    }
+
     {
         //位置
         ImGui::DragFloat3(
@@ -137,41 +214,34 @@ void SoccerBall::DrawImGui()
 
 void SoccerBall::BounceOffWalls()
 {
-    //これが壁の座標
-    {
-        constexpr float minX = -5.4f;
-        constexpr float maxX = 5.6f;
-        constexpr float minZ = 0.0f;
-        constexpr float maxZ = 10.45f;
-        constexpr float margin = 0.2f;
-    }
 
 
     //左右の壁
-    if ((m_transform.position.x > 5.6f && m_velocity.x > 0.0f) ||
-        (m_transform.position.x < -5.4f && m_velocity.x < 0.0f))
+    if ((m_transform.position.x > maxX && m_velocity.x > minZ) ||
+        (m_transform.position.x < minX && m_velocity.x < minZ))
     {
         m_velocity.x = -m_velocity.x * m_restitution;
     }
 
-    m_transform.position.x = std::clamp(m_transform.position.x, -5.4f, 5.6f);
+    m_transform.position.x = std::clamp(m_transform.position.x, minX, maxX);
 
-    const bool insideGoalWidth = m_transform.position.x >= -0.6f && m_transform.position.x <= 0.8f;
+    const bool insideGoalWidth = 
+        m_transform.position.x >= insideGoalMinX && m_transform.position.x <= insideGoalMaxX;
 
     //奥の壁
-    if ((m_transform.position.z > 10.45f)&&insideGoalWidth)
+    if ((m_transform.position.z > maxZ)&&insideGoalWidth)
     {
-        m_transform.position.z = 10.45f;
+        m_transform.position.z = maxZ;
 
-        if (m_velocity.z > 0.0f)
+        if (m_velocity.z > minZ)
         {
             m_velocity.z = -m_velocity.z * m_restitution;
         }
     }
-    else if (m_transform.position.z > 10.8)
+    else if (m_transform.position.z > maxZ)
     {
-        m_transform.position.z = 10.8f;
-        if (m_velocity.z > 0.0f)
+        m_transform.position.z = maxZ;
+        if (m_velocity.z > minZ)
         {
             m_velocity.z = -m_velocity.z * m_restitution;
         }
