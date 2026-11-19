@@ -214,7 +214,12 @@ void SoccerBall::DrawImGui()
 
 void SoccerBall::BounceOffWalls()
 {
-
+    // ゴールの横幅・高さに収まっているか
+    const bool insideGoal =
+        m_transform.position.x >= -0.55f &&
+        m_transform.position.x <= 0.76f &&
+        m_transform.position.y >= 0.0f &&
+        m_transform.position.y <= 1.44f;
 
     //左右の壁
     if ((m_transform.position.x > maxX && m_velocity.x > minZ) ||
@@ -225,30 +230,27 @@ void SoccerBall::BounceOffWalls()
 
     m_transform.position.x = std::clamp(m_transform.position.x, minX, maxX);
 
-    const bool insideGoalWidth = 
-        m_transform.position.x >= insideGoalMinX && m_transform.position.x <= insideGoalMaxX;
 
-    //奥の壁
-    if ((m_transform.position.z > maxZ)&&insideGoalWidth)
+    // ゴールの外なら、通常の奥の壁で反射
+    if (m_transform.position.z > maxZ && !insideGoal)
     {
         m_transform.position.z = maxZ;
 
-        if (m_velocity.z > minZ)
+        if (m_velocity.z > 0.0f)
         {
             m_velocity.z = -m_velocity.z * m_restitution;
         }
     }
-    else if (m_transform.position.z > maxZ)
+    // ゴール内なら奥へ通し、ネット奥の壁で止める
+    else if (m_transform.position.z > 10.8f)
     {
-        m_transform.position.z = maxZ;
-        if (m_velocity.z > minZ)
+        m_transform.position.z = 10.8f;
+
+        if (m_velocity.z > 0.0f)
         {
             m_velocity.z = -m_velocity.z * m_restitution;
         }
-
     }
-
-
 }
 
 void SoccerBall::SetDribbleVelocity(const DirectX::XMFLOAT3& velocity)

@@ -37,7 +37,7 @@ private:
 	//オンオフスイッチ
 	bool m_useGravity = false;
 	//地面
-	float m_ground = 0.7f;
+	float m_ground = 0.63f;
 
 	// ボールの移動速度
 	DirectX::XMFLOAT3 m_velocity{ 0.0f, 0.0f, 0.0f };

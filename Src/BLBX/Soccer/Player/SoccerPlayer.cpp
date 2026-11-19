@@ -35,6 +35,7 @@ void SoccerPlayer::Initialize()
 
 
     m_passKicked = false;
+    m_animationPaused = false;
 }
 
 void SoccerPlayer::Finalize()
@@ -45,7 +46,7 @@ void SoccerPlayer::Finalize()
 
 void SoccerPlayer::Update(float elapsedTime)
 {
-	if (!m_model)
+	if (!m_model||m_animationPaused)
 	{
 		return;
 	}
@@ -430,6 +431,13 @@ void SoccerPlayer::DrawImGui()
                 0.001f,
                 0.001f,
                 1.0f);
+
+            ImGui::DragFloat3(
+                "Rotation",
+                &m_transform.rotation.x,
+                0.01f,
+                DirectX::XMConvertToRadians(-180.0f),
+                DirectX::XMConvertToRadians(180.0f));
         }
 
         // ========================================
@@ -528,6 +536,8 @@ void SoccerPlayer::DrawImGui()
             ImGui::Checkbox(
                 "Auto Animation",
                 &m_autoAnimation);
+
+
 
             ImGui::Separator();
 

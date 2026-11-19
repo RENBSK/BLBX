@@ -21,7 +21,7 @@
 
 void SoccerAISystem::Initialize(int playerCount)
 {
-
+	//前のModulesを消す
 	m_modules.clear();
 
 	//前回のチーム情報を初期化
@@ -42,6 +42,14 @@ void SoccerAISystem::Initialize(int playerCount)
 	//選手ごとの要求・行動状態を用意
 	m_moveResolver.Initialize(playerCount);
 
+	//Module1に登録
+	m_modules.emplace_back(std::make_unique<DefenderAI>());
+	m_modules.emplace_back(std::make_unique<CoverAI>());
+	m_modules.emplace_back(std::make_unique<AttackAupportAI>());
+	m_modules.emplace_back(std::make_unique<AttackWideAI>());
+	m_modules.emplace_back(std::make_unique<FreeBallAI>());
+
+	//登録したModulesの初期化
 	for (auto& module : m_modules)
 	{
 		if (!module)
@@ -52,36 +60,30 @@ void SoccerAISystem::Initialize(int playerCount)
 		module->Initialize();
 	}
 
-	//Module1に登録
-	m_modules.emplace_back(std::make_unique<DefenderAI>());
-	m_modules.emplace_back(std::make_unique<CoverAI>());
-	m_modules.emplace_back(std::make_unique<AttackAupportAI>());
-	m_modules.emplace_back(std::make_unique<AttackWideAI>());
-	m_modules.emplace_back(std::make_unique<FreeBallAI>());
 }
 
-void SoccerAISystem::Update(std::vector<std::unique_ptr<SoccerPlayer>>& players, SoccerBall* ball, BlackBoard& sharedBB, float elapsedTime)
+void SoccerAISystem::Update(
+	std::vector<std::unique_ptr<SoccerPlayer>>& players, 
+	SoccerBall* ball, 
+	BlackBoard& sharedBB, 
+	float elapsedTime)
 {
 	if (!ball)
 	{
 		return;
 	}
-
+	//前のデータを消す。
 	m_moveResolver.Clear();
-
 	//チームBBからの共有情報の読めるようにする
 	m_allyTeamBB.SetParent(&sharedBB);
 	m_enemyTeamBB.SetParent(&sharedBB);
-
 	//現在の状況を更新
 	UpdateSharedBlackBoard(players, *ball, sharedBB);
-
 	//チーム方針を更新
 	if (m_enableMeta)
 	{
 		m_MetaAI.Update(sharedBB, m_allyTeamBB, m_enemyTeamBB, players, elapsedTime);
 	}
-
 	//両チームについて、各Moduleから要求する
 	for (int teamNumber = 0; teamNumber < 2; ++teamNumber)
 	{
@@ -103,67 +105,45 @@ void SoccerAISystem::Update(std::vector<std::unique_ptr<SoccerPlayer>>& players,
 				elapsedTime);
 		}
 	}
-
+	//操作プレイヤーを取得
 	const int controlledIndex = sharedBB.Get<int>(PlayerKeys::ControlledIndex).value_or(-1);
-
 	//要求を選択して移動を実行
 	//操作対象の番号も渡して、二重更新を防ぐ
 	m_moveResolver.ResolveAndExecute(players, controlledIndex, elapsedTime);
 
 }
 
+void SoccerAISystem::UpdateSharedBlackBoard(const std::vector<std::unique_ptr<SoccerPlayer>>& players, const SoccerBall& ball, BlackBoard& sharedBB)
+{
+	//AIが参照するボール位置を更新
+	sharedBB.Set(BallKeys::Position, ball.GetPosition());
+	//既に登録されている保持者番号を取得
+	const int ownerIndex = sharedBB.Get<int>(BallKeys::OwnerIndex).value_or(-1);
+	//保持者がなければ、保持チームなし
+	int ownerTeam = -1;
+	//保持者が存在する場合、その選手のチームを取得
+	if (ownerIndex >= 0 && ownerIndex < static_cast<int>(players.size()) && players[ownerIndex])
+	{
+		ownerTeam = players[ownerIndex]->GetTeamNumber();
+	}
+	//取得したチーム番号を共有
+	sharedBB.Set(BallKeys::OwnerTeam, ownerTeam);
+}
+
 void SoccerAISystem::DrawImGui()
 {
 #ifdef USE_IMGUI
-	ImGui::Checkbox("Role labels / arrows", &m_showRoleLabels);
-	ImGui::Checkbox("Final move targets", &m_showMoveTargets);
-	ImGui::Checkbox("Base / Soft targets", &m_showRequestTargets);
-
-	ImGui::InputInt(
-		"Detail player (-1 = all)",
-		&m_debugPlayerIndex);
-
-	ImGui::Checkbox("Enable Meta", &m_enableMeta);
-
-	const int lastIndex =
-		static_cast<int>(m_moveResolver.GetDebugInfos().size()) - 1;
-
-	m_debugPlayerIndex =
-		std::clamp(m_debugPlayerIndex, -1, lastIndex);
+	DrawViewImGui();
 
 	ImGui::Separator();
+
 	DrawRequestImGui();
 
 	m_MetaAI.DrawImGui(m_allyTeamBB, m_enemyTeamBB);
 
 	ImGui::Separator();
 
-
-	for (auto& module : m_modules)
-	{
-		if (!module)
-		{
-			continue;
-		}
-
-		ImGui::PushID(module.get());
-
-		bool enabled = module->isEnabled();
-
-		if (ImGui::Checkbox("##Enabled", &enabled))
-		{
-			module->SetEnabled(enabled);
-		}
-
-		ImGui::SameLine();
-
-		if (ImGui::CollapsingHeader(module->GetName()))
-		{
-			module->DrawImGui();
-		}
-
-		ImGui::PopID();
-	}
+	DrawModulesImGui();
 #endif
 }
 
@@ -602,13 +582,14 @@ void SoccerAISystem::DrawRequestImGui()
 
 	for (int i = 0; i < static_cast<int>(infos.size()); ++i)
 	{
-		// コート上の詳細表示と同じ選手指定を使う
-		if (m_debugPlayerIndex >= 0 && m_debugPlayerIndex != i)
+		// 指定した選手だけ表示。-1なら全選手
+		if (m_debugPlayerIndex >= 0 &&
+			m_debugPlayerIndex != i)
 		{
 			continue;
 		}
 
-		const AIPlayerMoveDebug& info = infos[i];
+		const auto& info = infos[i];
 
 		ImGui::PushID(i);
 
@@ -617,176 +598,240 @@ void SoccerAISystem::DrawRequestImGui()
 			? ImGuiTreeNodeFlags_DefaultOpen
 			: 0;
 
-		if (!ImGui::TreeNodeEx(
+		if (ImGui::TreeNodeEx(
 			"PlayerRequests",
 			flags,
-			"Player %d  (%d requests)",
+			"Player %d (%d requests)",
 			i,
 			static_cast<int>(info.requests.size())))
 		{
-			ImGui::PopID();
-			continue;
+			DrawMoveImGui(info, i == controlledIndex);
+			DrawTableImGui(info);
+
+			ImGui::TreePop();
 		}
 
-		if (i == controlledIndex)
-		{
-			ImGui::TextColored(
-				ImVec4(1.0f, 0.9f, 0.2f, 1.0f),
-				"Manual control");
-		}
-		else if (info.hasFinalMove)
-		{
-			ImGui::TextColored(
-				ImVec4(1.0f, 0.9f, 0.2f, 1.0f),
-				"Final: %s / %s",
-				ToString(info.finalType),
-				ToString(info.finalReason));
-
-			ImGui::Text(
-				"Target: (%.2f, %.2f, %.2f)",
-				info.finalTarget.x,
-				info.finalTarget.y,
-				info.finalTarget.z);
-
-			ImGui::Text(
-				"Actual speed: %.2f",
-				info.finalMoveSpeed);
-		}
-		else
-		{
-			ImGui::TextDisabled("No final move");
-		}
-
-		// 継続中のAction
-		if (info.hasCurrentAction)
-		{
-			ImGui::Text(
-				"Current Action: %s",
-				ToString(info.currentActionReason));
-
-			ImGui::Text(
-				"Elapsed: %.2f / minimum %.2f s",
-				info.currentActionElapsedTime,
-				info.currentActionMinCommitmentTime);
-		}
-
-		// 切り替え確認中のAction
-		if (info.hasCandidateAction)
-		{
-			ImGui::Text(
-				"Checking: %s",
-				ToString(info.candidateActionReason));
-
-			ImGui::Text(
-				"Confirmation: %.2f / %.2f s",
-				info.candidateElapsedTime,
-				info.candidateRequiredTime);
-
-			const float progress =
-				info.candidateRequiredTime > 0.0f
-				? std::clamp(
-					info.candidateElapsedTime /
-					info.candidateRequiredTime,
-					0.0f,
-					1.0f)
-				: 1.0f;
-
-			ImGui::ProgressBar(
-				progress,
-				ImVec2(-1.0f, 0.0f));
-		}
-
-		if (info.requests.empty())
-		{
-			ImGui::TextDisabled("No requests submitted");
-		}
-		else
-		{
-			// 横にスクロールできる要求一覧
-			const float tableHeight =
-				ImGui::GetTextLineHeightWithSpacing() *
-				(static_cast<float>(info.requests.size()) + 2.0f)
-				+ 32.0f;
-
-			const ImGuiTableFlags tableFlags =
-				ImGuiTableFlags_Borders |
-				ImGuiTableFlags_RowBg |
-				ImGuiTableFlags_Resizable |
-				ImGuiTableFlags_ScrollX |
-				ImGuiTableFlags_SizingFixedFit;
-
-			if (ImGui::BeginTable(
-				"Requests",
-				8,
-				tableFlags,
-				ImVec2(0.0f, tableHeight)))
-			{
-				ImGui::TableSetupColumn("Type");
-				ImGui::TableSetupColumn("Reason");
-				ImGui::TableSetupColumn("Priority");
-				ImGui::TableSetupColumn("Utility");
-				ImGui::TableSetupColumn("Urgency");
-				ImGui::TableSetupColumn("Weight");
-				ImGui::TableSetupColumn("Target X / Z");
-				ImGui::TableSetupColumn("Req speed");
-				ImGui::TableHeadersRow();
-
-				for (const auto& request : info.requests)
-				{
-					ImGui::TableNextRow();
-
-					ImGui::TableSetColumnIndex(0);
-					ImGui::TextUnformatted(ToString(request.type));
-
-					ImGui::TableSetColumnIndex(1);
-					ImGui::TextUnformatted(ToString(request.reason));
-
-					ImGui::TableSetColumnIndex(2);
-					ImGui::Text("%d", request.priority);
-
-					ImGui::TableSetColumnIndex(3);
-					ImGui::Text("%.2f", request.utility);
-
-					ImGui::TableSetColumnIndex(4);
-					ImGui::Text("%.2f", request.urgency);
-
-					ImGui::TableSetColumnIndex(5);
-					ImGui::Text("%.2f", request.weight);
-
-					ImGui::TableSetColumnIndex(6);
-					ImGui::Text(
-						"%.2f / %.2f",
-						request.targetPosition.x,
-						request.targetPosition.z);
-
-					ImGui::TableSetColumnIndex(7);
-					ImGui::Text("%.2f", request.moveSpeed);
-				}
-
-				ImGui::EndTable();
-			}
-		}
-
-		ImGui::TreePop();
 		ImGui::PopID();
 	}
 #endif
 }
 
-void SoccerAISystem::UpdateSharedBlackBoard(const std::vector<std::unique_ptr<SoccerPlayer>>& players, const SoccerBall& ball, BlackBoard& sharedBB)
+void SoccerAISystem::DrawViewImGui()
 {
-	sharedBB.Set(BallKeys::Position, ball.GetPosition());
+#ifdef USE_IMGUI
+	ImGui::Checkbox(
+		"Role labels / arrows",
+		&m_showRoleLabels);
 
-	//既に登録されている保持者番号を取得
-	const int ownerIndex = sharedBB.Get<int>(BallKeys::OwnerIndex).value_or(-1);
+	ImGui::Checkbox(
+		"Final move targets",
+		&m_showMoveTargets);
 
-	//保持者がなければ、保持チームなし
-	int ownerTeam = -1;
+	ImGui::Checkbox(
+		"Base / Soft targets",
+		&m_showRequestTargets);
 
-	if (ownerIndex >= 0 && ownerIndex < static_cast<int>(players.size()) && players[ownerIndex])
+	ImGui::InputInt(
+		"Detail player (-1 = all)",
+		&m_debugPlayerIndex);
+
+	const int lastIndex =
+		static_cast<int>(
+			m_moveResolver.GetDebugInfos().size()) - 1;
+
+	m_debugPlayerIndex = std::clamp(
+		m_debugPlayerIndex, -1, lastIndex);
+
+	ImGui::Checkbox(
+		"Enable Meta",
+		&m_enableMeta);
+#endif
+}
+
+void SoccerAISystem::DrawModulesImGui()
+{
+#ifdef USE_IMGUI
+	for (auto& module : m_modules)
 	{
-		ownerTeam = players[ownerIndex]->GetTeamNumber();
+		if (!module)
+		{
+			continue;
+		}
+
+		ImGui::PushID(module.get());
+
+		bool enabled = module->isEnabled();
+
+		if (ImGui::Checkbox("##Enabled", &enabled))
+		{
+			module->SetEnabled(enabled);
+		}
+
+		ImGui::SameLine();
+
+		if (ImGui::CollapsingHeader(module->GetName()))
+		{
+			module->DrawImGui();
+		}
+
+		ImGui::PopID();
+	}
+#endif
+}
+
+void SoccerAISystem::DrawMoveImGui(const AIPlayerMoveDebug& info, bool isManual)
+{
+#ifdef USE_IMGUI
+	const ImVec4 resultColor{
+		1.0f, 0.9f, 0.2f, 1.0f
+	};
+
+	if (isManual)
+	{
+		ImGui::TextColored(
+			resultColor,
+			"Manual control");
+	}
+	else if (info.hasFinalMove)
+	{
+		ImGui::TextColored(
+			resultColor,
+			"Final: %s / %s",
+			ToString(info.finalType),
+			ToString(info.finalReason));
+
+		ImGui::Text(
+			"Target: (%.2f, %.2f, %.2f)",
+			info.finalTarget.x,
+			info.finalTarget.y,
+			info.finalTarget.z);
+
+		ImGui::Text(
+			"Actual speed: %.2f",
+			info.finalMoveSpeed);
+	}
+	else
+	{
+		ImGui::TextDisabled("No final move");
 	}
 
-	sharedBB.Set(BallKeys::OwnerTeam, ownerTeam);
+	// 現在実行しているAction
+	if (info.hasCurrentAction)
+	{
+		ImGui::Text(
+			"Current Action: %s",
+			ToString(info.currentActionReason));
+
+		ImGui::Text(
+			"Elapsed: %.2f / minimum %.2f s",
+			info.currentActionElapsedTime,
+			info.currentActionMinCommitmentTime);
+	}
+
+	// 次のActionへの切り替え確認
+	if (info.hasCandidateAction)
+	{
+		ImGui::Text(
+			"Checking: %s",
+			ToString(info.candidateActionReason));
+
+		ImGui::Text(
+			"Confirmation: %.2f / %.2f s",
+			info.candidateElapsedTime,
+			info.candidateRequiredTime);
+
+		const float progress =
+			info.candidateRequiredTime > 0.0f
+			? std::clamp(
+				info.candidateElapsedTime /
+				info.candidateRequiredTime,
+				0.0f,
+				1.0f)
+			: 1.0f;
+
+		ImGui::ProgressBar(
+			progress,
+			ImVec2(-1.0f, 0.0f));
+	}
+#endif
 }
+
+void SoccerAISystem::DrawTableImGui(const AIPlayerMoveDebug& info)
+{
+#ifdef USE_IMGUI
+	if (info.requests.empty())
+	{
+		ImGui::TextDisabled("No requests submitted");
+		return;
+	}
+
+	const float tableHeight =
+		ImGui::GetTextLineHeightWithSpacing() *
+		(static_cast<float>(info.requests.size()) + 2.0f)
+		+ 32.0f;
+
+	const ImGuiTableFlags flags =
+		ImGuiTableFlags_Borders |
+		ImGuiTableFlags_RowBg |
+		ImGuiTableFlags_Resizable |
+		ImGuiTableFlags_ScrollX |
+		ImGuiTableFlags_SizingFixedFit;
+
+	if (!ImGui::BeginTable(
+		"Requests",
+		8,
+		flags,
+		ImVec2(0.0f, tableHeight)))
+	{
+		return;
+	}
+
+	ImGui::TableSetupColumn("Type");
+	ImGui::TableSetupColumn("Reason");
+	ImGui::TableSetupColumn("Priority");
+	ImGui::TableSetupColumn("Utility");
+	ImGui::TableSetupColumn("Urgency");
+	ImGui::TableSetupColumn("Weight");
+	ImGui::TableSetupColumn("Target X / Z");
+	ImGui::TableSetupColumn("Req speed");
+
+	ImGui::TableHeadersRow();
+
+	for (const auto& request : info.requests)
+	{
+		ImGui::TableNextRow();
+
+		ImGui::TableSetColumnIndex(0);
+		ImGui::TextUnformatted(
+			ToString(request.type));
+
+		ImGui::TableSetColumnIndex(1);
+		ImGui::TextUnformatted(
+			ToString(request.reason));
+
+		ImGui::TableSetColumnIndex(2);
+		ImGui::Text("%d", request.priority);
+
+		ImGui::TableSetColumnIndex(3);
+		ImGui::Text("%.2f", request.utility);
+
+		ImGui::TableSetColumnIndex(4);
+		ImGui::Text("%.2f", request.urgency);
+
+		ImGui::TableSetColumnIndex(5);
+		ImGui::Text("%.2f", request.weight);
+
+		ImGui::TableSetColumnIndex(6);
+		ImGui::Text(
+			"%.2f / %.2f",
+			request.targetPosition.x,
+			request.targetPosition.z);
+
+		ImGui::TableSetColumnIndex(7);
+		ImGui::Text("%.2f", request.moveSpeed);
+	}
+
+	ImGui::EndTable();
+#endif
+}
+

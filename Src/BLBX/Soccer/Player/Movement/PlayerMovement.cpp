@@ -50,28 +50,49 @@ void PlayerMovement::Update(
 
     if (hasInput)
     {
-        // 入力方向を正規化
-        const float inputLength = std::sqrt(inputLengthSq);
+        // 現在の向きと、入力で向きたい方向
+        const auto forward = player.GetForward();
 
+        const float currentAngle = std::atan2(forward.x, forward.z);
+
+        const float targetAngle = std::atan2(direction.x, direction.z);
+
+        // 角度差を-π～πに収め、近い方向へ回す
+        const float angleDiff = std::atan2(
+            std::sin(targetAngle - currentAngle),
+            std::cos(targetAngle - currentAngle));
+
+        // このフレームで回せる最大角度
+        float maxTurn =std::max(parameters.turnSpeed, 0.0f) * elapsedTime;
+
+        if (player.GetAnimationState() == PlayerAnimationState::Dribble)
+        {
+            float maxTurn = std::max(1.0f, 0.0f) * elapsedTime;
+        }
+        
+        const float turn =std::clamp(angleDiff, -maxTurn, maxTurn);
+
+        const float newAngle = currentAngle + turn;
+
+        // 回転後の向きを、今回の進行方向にする
         moveDirection =
         {
-            direction.x / inputLength,
+            std::sin(newAngle),
             0.0f,
-            direction.z / inputLength
+            std::cos(newAngle)
         };
+
+        // 速さだけ徐々に上げる
         const float acceleration = std::max(parameters.acceleration, 0.0f);
 
-        // 速さだけを徐々に上げる
         speed = std::min(speed + acceleration * elapsedTime, taregtSpeed);
 
-        // 方向は即座に切り替える
         m_velocity =
         {
             moveDirection.x * speed,
             0.0f,
             moveDirection.z * speed
         };
-
 
         player.FaceToMoveDirection(moveDirection);
     }

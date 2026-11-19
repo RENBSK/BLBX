@@ -39,6 +39,18 @@ public:
 
 	void DrawRequestImGui();
 
+	// 表示設定
+	void DrawViewImGui();
+
+	// 各AIの設定
+	void DrawModulesImGui();
+
+	// 選手の最終移動とAction状態
+	void DrawMoveImGui(const AIPlayerMoveDebug& info,bool isManual);
+
+	// 提出された要求の一覧表
+	void DrawTableImGui(const AIPlayerMoveDebug& info);
+
 private:
 	void UpdateSharedBlackBoard(const std::vector<std::unique_ptr<SoccerPlayer>>& players,
 		const SoccerBall& ball,

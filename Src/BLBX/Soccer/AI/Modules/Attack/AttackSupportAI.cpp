@@ -25,19 +25,18 @@ void AttackAupportAI::SubmitRequests(
 	m_debugMinSideSlip[TeamNumber].reset();
 
 	int SupportIndex = blackboard.Get<int>(PlayerKeys::AttackSupportPlayerIndex).value_or(-1);
-
 	if (SupportIndex < 0)
 	{
 		return;
 	}
-
+	//一度リの基準となる保持者を取得
 	int referenceIndex = blackboard.Get<int>(BallKeys::OwnerIndex).value_or(-1);
-
+	//パス中は、受け手を基準に攻撃の配置を作る。
 	if (referenceIndex < 0 )
 	{
 		referenceIndex = blackboard.Get<int>(BallKeys::PassTarget).value_or(-1);
 	}
-
+	//有効な基準選手がいなければ要求しない。
 	if (referenceIndex < 0 ||
 		referenceIndex >= static_cast<int>(players.size()) ||
 		!players[referenceIndex])
@@ -46,49 +45,46 @@ void AttackAupportAI::SubmitRequests(
 	}
 
 	DirectX::XMFLOAT3 Position = players[SupportIndex]->GetPosition();
-
 	DirectX::XMFLOAT3 referencePos = players[referenceIndex]->GetPosition();
-
 	DirectX::XMFLOAT3 GoalPos =
 		blackboard.Get<DirectX::XMFLOAT3>(TeamKeys::GoalPosition).value_or(DirectX::XMFLOAT3{});
 
+	//現在の位置へのパスコースを評価
+	//値が大きいほど、直線から敵が横に離れている
 	float minSideSlip = m_calAIeva.CalcPassSpace(referencePos, Position, players, TeamNumber);
-
+	// ImGui表示用に結果を保存
 	m_debugMinSideSlip[TeamNumber] = minSideSlip;
-	
+	//基準位置から、攻めるゴールへの方向
 	DirectX::XMFLOAT3 AttackDirection =
 	{
 		GoalPos.x - referencePos.x,
 		0.0f,
 		GoalPos.z - referencePos.z
 	};
-
-	//攻撃方向
+	//攻撃方向を長さ1に正規化し、距離を掛けて使える方向にする
 	DirectX::XMVECTOR AttackVec = DirectX::XMVector3Normalize(DirectX::XMLoadFloat3(&AttackDirection));
-
 	DirectX::XMFLOAT3 attackDir;
 	DirectX::XMStoreFloat3(&attackDir, AttackVec);
 
-
-	//今は仮の候補を作っているが、今後は位置もどこに動くか計算してだしたい。
-	//右の仮位置
+	// 右候補：攻撃方向へ進め、さらに右へずらす
+	// 右方向は { attackDir.z, 0, -attackDir.x }
 	DirectX::XMFLOAT3 rightCandidatePos =
 	{
 		referencePos.x + attackDir.x * m_forwardDistance + attackDir.z * m_sideDistance,
 		Position.y,
 		referencePos.z + attackDir.z * m_forwardDistance - attackDir.x * m_sideDistance
 	};
-	//左の仮位置
+	// 左候補：横方向の距離を反転させる
 	DirectX::XMFLOAT3 leftCandidatePos =
 	{
 		referencePos.x + attackDir.x * m_forwardDistance + attackDir.z * -m_sideDistance,
 		Position.y,
 		referencePos.z + attackDir.z * m_forwardDistance - attackDir.x * -m_sideDistance
 	};
-
+	//候補位置がコートの外に出ないように補正
 	rightCandidatePos = m_calAIeva.ClampToPitch(rightCandidatePos);
 	leftCandidatePos = m_calAIeva.ClampToPitch(leftCandidatePos);
-
+	//実際に移動できる候補位置で、左右のパスコースを評価
 	float rightMinSideSlip = m_calAIeva.CalcPassSpace(referencePos, rightCandidatePos, players, TeamNumber);
 
 	m_debugRightMinSideSlip[TeamNumber] = rightMinSideSlip;
@@ -114,8 +110,8 @@ void AttackAupportAI::SubmitRequests(
 		}
 	}
 
+	// 選ばれた候補を今回の移動先にする
 	DirectX::XMFLOAT3 targetPos = rightCandidatePos;
-
 	if (useLeft)
 	{
 		targetPos = leftCandidatePos;

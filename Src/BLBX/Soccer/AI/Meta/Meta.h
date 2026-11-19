@@ -23,47 +23,31 @@ public:
 		std::vector<std::unique_ptr<SoccerPlayer>>& players,
 		float elapsedTime);
 
-	void FindPressPlayerIndex(
-		const BlackBoard& sharedBB,
-		BlackBoard& allyTeamBB,
-		BlackBoard& enemyTeamBB,
+	void AssignPress(
+		int teamNumber,
+		BlackBoard& teamBB,
 		std::vector < std::unique_ptr<SoccerPlayer>>& players,
 		float elapsedTime);
 
-	void FindDefenderSupportPlayerIndex(
-		const BlackBoard& sharedBB,
-		BlackBoard& allyTeamBB,
-		BlackBoard& enemyTeamBB,
-		std::vector < std::unique_ptr<SoccerPlayer>>& players,
-		float elapsedTime);
-
-	void FindAttackSupportPlayerIndex(
-		const BlackBoard& sharedBB,
-		BlackBoard& allyTeamBB,
-		BlackBoard& enemyTeamBB,
-		std::vector < std::unique_ptr<SoccerPlayer>>& players,
-		float elapsedTime);
-
-	void AssignMarks(
-		const BlackBoard& sharedBB,
-		BlackBoard& allyTeamBB,
-		BlackBoard& enemyTeamBB,
-		std::vector < std::unique_ptr<SoccerPlayer>>& players,
-		float elapsedTime);
+	void AssignCover(
+		int teamNumber,
+		BlackBoard& teamBB,
+		std::vector < std::unique_ptr<SoccerPlayer>>& players);
 
 	void AssignAttack(
-		const BlackBoard& sharedBB,
-		BlackBoard& allyTeamBB,
-		BlackBoard& enemyTeamBB,
-		std::vector < std::unique_ptr<SoccerPlayer>>& players,
-		float elapsedTime);
+		int teamNumber,
+		BlackBoard& teamBB,
+		const std::vector<std::unique_ptr<SoccerPlayer>>& players);
 
-	void AssainFreeBallPlayerIndex(
-		const BlackBoard& sharedBB,
-		BlackBoard& allyTeamBB,
-		BlackBoard& enemyTeamBB,
-		std::vector < std::unique_ptr<SoccerPlayer>>& players,
-		float elapsedTime);
+	void AssignMarks(
+		int teamNumber,
+		const BlackBoard& teamBB,
+		const std::vector<std::unique_ptr<SoccerPlayer>>& players);
+
+	void AssignChase(
+		int teamNumber,
+		BlackBoard& teamBB,
+		const std::vector<std::unique_ptr<SoccerPlayer>>& players);
 
 	void DrawImGui(const BlackBoard& allyTeamBB, const BlackBoard& enemyTeamBB);
 
@@ -77,6 +61,25 @@ public:
 	{
 		return m_markTargets;
 	}
+
+//共通の計算関数
+public:
+	//保持者、またはパスの受け手の番号を取得
+	int GetReference(
+		const BlackBoard& blackboard,
+		const std::vector<std::unique_ptr<SoccerPlayer>>& players) const;
+
+	//指定チームから、目標位置に一番近い選手を探す
+	int FindNearest(
+		const std::vector<std::unique_ptr<SoccerPlayer>>& players,
+		int TeamNumber,
+		const DirectX::XMFLOAT3& targetPosition,
+		int excludeIndex = -1,
+		int secondExcludeIndex = -1)const;
+
+	std::vector<int>FindOrder(const std::vector<std::vector<float>>& costs) const;
+	
+
 
 private:
 	struct PressAssignmentState

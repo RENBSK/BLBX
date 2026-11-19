@@ -73,6 +73,11 @@ public:
 	{
 		m_hasBall = set;
 	}
+	
+	void SetAnimationPaused(bool paused)
+	{
+		m_animationPaused = paused;
+	}
 
 	PlayerAnimationState GetAnimationState() const
 	{
@@ -123,6 +128,8 @@ private:
 	float m_blendTime = 0.0f;
 	float m_blendDuration = 0.0f;
 	bool m_isBlending = false;
+
+	bool m_animationPaused = false;
 
 	//プレイヤー移動速度
 	float m_movementSpeed = 0.0f;
