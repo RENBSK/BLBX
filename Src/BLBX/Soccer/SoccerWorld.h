@@ -14,6 +14,7 @@
 #include "Soccer/Player/Movement/PlayerMovement.h"
 #include "Soccer/Player/Dribble/DribbleController.h"
 #include "Soccer/Player/Manager/PlayerManager.h"
+#include "Resource/Sprite/Sprite.h"
 
 #include "Soccer/AI/Core/SoccerAISystem.h"
 
@@ -45,6 +46,8 @@ public:
 
 	//ÉpÉXëäéËÇíTÇ∑
 	int FinPassTarget(SoccerPlayer& player);
+	//ÉSÅ[Éã
+	bool IsGoal() const;
 
 	void UpdateKickoff();
 
@@ -86,6 +89,8 @@ private:
 
 	SoccerAISystem m_soccerAISystem;
 
+	std::unique_ptr<Sprite> sprites;
+
 private:
 	//Imgui
 	bool m_showDebugUI = true;
@@ -97,6 +102,22 @@ private:
 	float m_passElapsed = 0.0f;
 
 	int m_kickoffTargetIndex = -1;
+
+	bool m_isGoal = false;
+
+	float m_spriteX = 0.0f;
+	float m_spriteY = 0.0f;
+
+	float m_spriteW = 0.0f;
+	float m_spriteH = 0.0f;
+
+	float m_goalElapsed = 0.0f;
+	// ägëÂÇ…Ç©ÇØÇÈéûä‘
+	float m_goalDuration = 0.35f; 
+
+	bool m_drawImGui = false;
+
+
 };
 
 

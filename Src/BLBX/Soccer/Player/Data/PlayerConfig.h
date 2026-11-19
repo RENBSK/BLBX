@@ -62,7 +62,7 @@ struct PlayerParameters
 	float maxSpeed = 2.25f;
 	float acceleration = 1.35f;
 	float deceleration = 2.5f;
-	float turnSpeed = 10.0f;
+	float turnSpeed = 5.0f;
 	float ballControl = 1.0f;
 };
 

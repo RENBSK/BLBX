@@ -6,8 +6,10 @@
 #include "Soccer/Player/SoccerPlayer.h"
 
 #include "Renderer/PrimitiveRenderer.h"
+
 #include <cmath>
 #include <algorithm>
+#include <limits>
 
 #ifdef USE_IMGUI
 #include <imgui.h>
@@ -20,710 +22,358 @@ void Meta::Update(
 	std::vector<std::unique_ptr<SoccerPlayer>>& players,
 	float elapsedTime)
 {
-	//味方チームを0,敵チームを1に登録しておく
+	// 保持者がいなければ、パスを出したチームを攻撃側にする
 	const int owmerTeam = sharedBB.Get<int>(BallKeys::OwnerTeam).value_or(-1);
-
 	int attackTeam = sharedBB.Get<int>(BallKeys::OwnerTeam).value_or(-1);
 	if (attackTeam < 0)
 	{
 		attackTeam = sharedBB.Get<int>(BallKeys::PassTeam).value_or(-1);
 	}
 
+	// 両チームの攻守を更新
 	allyTeamBB.Set(TeamKeys::IsAttacking, attackTeam == 0);
 	allyTeamBB.Set(TeamKeys::IsDefending, attackTeam == 1);
 
 	enemyTeamBB.Set(TeamKeys::IsAttacking, attackTeam == 1);
 	enemyTeamBB.Set(TeamKeys::IsDefending, attackTeam == 0);
 
+	//守備の担当
+	// 両チームのPress担当を決める
+	for (int team = 0; team < 2; ++team)
+	{
+		BlackBoard& teamBB = team == 0 ? allyTeamBB : enemyTeamBB;
 
-
-	//プレスプレイヤーを決める
-	FindPressPlayerIndex(sharedBB, allyTeamBB, enemyTeamBB, players, elapsedTime);
-
-	FindDefenderSupportPlayerIndex(sharedBB, allyTeamBB, enemyTeamBB, players, elapsedTime);
-
-	FindAttackSupportPlayerIndex(sharedBB, allyTeamBB, enemyTeamBB, players, elapsedTime);
-
-	//AssignAttack(sharedBB, allyTeamBB, enemyTeamBB, players, elapsedTime);
-
-	AssignMarks(sharedBB, allyTeamBB, enemyTeamBB, players, elapsedTime);
-
-	AssainFreeBallPlayerIndex(sharedBB, allyTeamBB, enemyTeamBB, players, elapsedTime);
+		//Pressを先に決め、Coverと担当が重ならないようにする。
+		AssignPress(team, teamBB, players, elapsedTime);
+		AssignCover(team, teamBB, players);
+		//攻撃の担当
+		AssignAttack(team, teamBB, players);
+		//マークする相手の割り当て
+		AssignMarks(team, teamBB, players);
+		//フリーボールを追う担当
+		AssignChase(team, teamBB, players);
+	}
+	
 }
 
-void Meta::FindPressPlayerIndex(
-	const BlackBoard& sharedBB, 
-	BlackBoard& allyTeamBB, 
-	BlackBoard& enemyTeamBB, 
-	std::vector<std::unique_ptr<SoccerPlayer>>& players,
+void Meta::AssignPress(
+	int teamNumber,
+	BlackBoard& teamBB,
+	std::vector < std::unique_ptr<SoccerPlayer>>& players,
 	float elapsedTime)
 {
-	int referenceIndex = sharedBB.Get<int>(BallKeys::OwnerIndex).value_or(-1);
-
+	//守備の基準にする相手を取得(保持者、パス中なら受け手)
+	int referenceIndex = GetReference(teamBB, players);
+	//有効な相手がいなければ、今回の担当決めは行わない。
 	if (referenceIndex < 0)
-	{
-		referenceIndex = sharedBB.Get<int>(BallKeys::PassTarget).value_or(-1);
-	}
-
-	if (referenceIndex < 0 ||
-		referenceIndex >= static_cast<int>(players.size()) ||
-		!players[referenceIndex])
 	{
 		return;
 	}
+	//対象に一番近い、このチームの選手を探す
+	const auto referencePos = players[referenceIndex]->GetPosition();
+	//対象に一番近い、このチームの選手をPress候補にする
+	const auto bestIndex = FindNearest(players, teamNumber, referencePos);
+	//このチームの交代候補を確認タイマーを参照で取得
+	auto& state = m_pressStates[teamNumber];
+	//現在のPress担当を取得。担当なしなら-1
+	const int currentIndex = teamBB.Get<int>(PlayerKeys::PressPlayerIndex).value_or(-1);
+	//このチームが今守備中か確認
+	const bool isDefending = teamBB.Get<bool>(TeamKeys::IsDefending).value_or(false);
 
-	DirectX::XMFLOAT3 referencePos = players[referenceIndex]->GetPosition();
+	int pressIndex = -1;
 
-	for (int teamNumber = 0; teamNumber < 2; ++teamNumber)
+	if (!isDefending || bestIndex < 0)
 	{
-		BlackBoard& teamBB = teamNumber == 0 ? allyTeamBB : enemyTeamBB;
+		//守備しない、または候補がいないので解除
+		state = PressAssignmentState{};
+	}
+	else if (currentIndex < 0 || currentIndex == bestIndex)
+	{
+		//担当なしなら決定。同じ担当なら維持
+		pressIndex = bestIndex;
+		state = PressAssignmentState{};
+	}
+	else
+	{
+		//確認中は今の担当を維持
+		pressIndex = currentIndex;
 
-		//プレスプレイヤーを決める。
-		//最も近いプレイヤーを探す。
-		int bestIndex = -1;
-		float nearestDistSq = FLT_MAX;
-		for (int i = 0; i < static_cast<int>(players.size()); ++i)
+		// 候補が変わったら計り直す
+		if (state.candidateIndex != bestIndex)
 		{
-			SoccerPlayer* player = players[i].get();
-			if (!player || player->GetTeamNumber() != teamNumber)
-			{
-				continue;
-			}
-
-			DirectX::XMFLOAT3 playerPos = player->GetPosition();
-
-			float dx = referencePos.x - playerPos.x;
-			float dz = referencePos.z - playerPos.z;
-
-			float distSq = dx * dx + dz * dz;
-
-			if (distSq < nearestDistSq)
-			{
-				nearestDistSq = distSq;
-				bestIndex = i;
-			}
+			state.candidateIndex = bestIndex;
+			state.timer = 0.0f;
 		}
 
-		//すぐにプレスプレイヤーを切り替えるのを防ぐ
-		//将来的には候補型にして、さまざまの情報から候補にするかきめるようにしたい。
-		PressAssignmentState& state = m_pressStates[teamNumber];
+		state.timer += elapsedTime;
 
-		const int currentIndex = teamBB.Get<int>(PlayerKeys::PressPlayerIndex).value_or(-1);
-
-		const bool isDefending = teamBB.Get<bool>(TeamKeys::IsDefending).value_or(false);
-
-		int pressIndex = -1;
-
-		if (!isDefending || bestIndex < 0)
+		//同じ候補が一定時間続いたら交代
+		//簡単には切り替えないように
+		if (state.timer >= m_PressSwitchTimer)
 		{
-			// 守備しない、または候補がいないので解除
-			state = PressAssignmentState{};
-		}
-		else if (currentIndex < 0 || currentIndex == bestIndex)
-		{
-			// 初回はすぐ決定。同じ担当ならそのまま維持
 			pressIndex = bestIndex;
 			state = PressAssignmentState{};
 		}
-		else
-		{
-			// 切り替え待ちの間は、現在の担当を維持
-			pressIndex = currentIndex;
-
-			// 候補が変わったら計り直す
-			if (state.candidateIndex != bestIndex)
-			{
-				state.candidateIndex = bestIndex;
-				state.timer = 0.0f;
-			}
-
-			state.timer += elapsedTime;
-
-			if (state.timer >= m_PressSwitchTimer)
-			{
-				pressIndex = bestIndex;
-				state = PressAssignmentState{};
-			}
-		}
-
-		// 決定した担当を登録
-		teamBB.Set(PlayerKeys::PressPlayerIndex, pressIndex);
-		teamBB.Set(PlayerKeys::PressTargetIndex, pressIndex >= 0 ? referenceIndex : -1);
 	}
+
+	// 担当とマーク対象を登録
+	teamBB.Set(PlayerKeys::PressPlayerIndex, pressIndex);
+	teamBB.Set(PlayerKeys::PressTargetIndex, pressIndex >= 0 ? referenceIndex : -1);
 }
 
 
-void Meta::FindDefenderSupportPlayerIndex(
-	const BlackBoard& sharedBB, 
-	BlackBoard& allyTeamBB, 
-	BlackBoard& enemyTeamBB, 
-	std::vector<std::unique_ptr<SoccerPlayer>>& players, 
-	float elapsedTime)
+void Meta::AssignCover(
+	int teamNumber,
+	BlackBoard& teamBB,
+	std::vector < std::unique_ptr<SoccerPlayer>>& players)
 {
-	int referenceIndex = sharedBB.Get<int>(BallKeys::OwnerIndex).value_or(-1);
-
+	//守備の基準にする相手を取得(保持者、パス中なら受け手)
+	int referenceIndex = GetReference(teamBB, players);
+	//有効な相手がいなければ、今回の担当決めは行わない。
 	if (referenceIndex < 0)
 	{
-		referenceIndex = sharedBB.Get<int>(BallKeys::PassTarget).value_or(-1);
+		return;
+	}
+	//守備中でなければ、Cover担当を解除
+	if (!teamBB.Get<bool>(TeamKeys::IsDefending).value_or(false))
+	{
+		teamBB.Set(PlayerKeys::DefenceCoverIndex, -1);
+		return;
 	}
 
-	if (referenceIndex < 0 ||
-		referenceIndex >= static_cast<int>(players.size()) ||
-		!players[referenceIndex])
+	const int pressIndex = teamBB.Get<int>(PlayerKeys::PressPlayerIndex).value_or(-1);
+	const int coverIndex = teamBB.Get<int>(PlayerKeys::DefenceCoverIndex).value_or(-1);
+
+	//一旦Coverがいたら後から変更しないで維持する
+	const bool canKeepCover = coverIndex >= 0
+		&& players[coverIndex]->GetTeamNumber() == teamNumber
+		&& coverIndex != pressIndex;
+
+	if (canKeepCover)
 	{
 		return;
 	}
 
-	for (int teamNumber = 0; teamNumber < 2; ++teamNumber)
-	{
-		BlackBoard& teamBB = teamNumber == 0 ? allyTeamBB : enemyTeamBB;
+	//守備サポートを決める。
+	//最も近いプレイヤーを探す。
+	const auto referncePos = players[referenceIndex]->GetPosition();
+	const int bestIndex = FindNearest(players, teamNumber, referncePos, pressIndex);
 
-		DirectX::XMFLOAT3 referencePos = players[referenceIndex]->GetPosition();
-
-		PressAssignmentState& state = m_pressStates[teamNumber];
-
-		const int currentIndex = teamBB.Get<int>(PlayerKeys::PressPlayerIndex).value_or(-1);
-
-		const bool isDefending = teamBB.Get<bool>(TeamKeys::IsDefending).value_or(false);
-
-		if (!isDefending)
-		{
-			teamBB.Set(PlayerKeys::DefenceCoverIndex, -1);
-			continue;
-		}
-
-		const int currentCoverIndex = teamBB.Get<int>(PlayerKeys::DefenceCoverIndex).value_or(-1);
-
-		//一旦Coverがいたら後から変更しないで維持する
-		const bool canKeepCover = currentCoverIndex >= 0
-			&& players[currentCoverIndex]->GetTeamNumber() == teamNumber
-			&& currentCoverIndex != currentIndex;
-		if (canKeepCover)
-		{
-			continue;
-		}
-
-		//守備サポートを決める。
-		//最も近いプレイヤーを探す。
-		int bestIndex = -1;
-		float nearestDistSq = FLT_MAX;
-		for (int i = 0; i < static_cast<int>(players.size()); ++i)
-		{
-			SoccerPlayer* player = players[i].get();
-			if (!player || player->GetTeamNumber() != teamNumber || i == currentIndex)
-			{
-				continue;
-			}
-
-			DirectX::XMFLOAT3 playerPos = player->GetPosition();
-
-			float dx = referencePos.x - playerPos.x;
-			float dz = referencePos.z - playerPos.z;
-
-			float distSq = dx * dx + dz * dz;
-
-			if (distSq < nearestDistSq)
-			{
-				nearestDistSq = distSq;
-				bestIndex = i;
-			}
-		}
-
-		teamBB.Set(PlayerKeys::DefenceCoverIndex, bestIndex);
-	}
+	teamBB.Set(PlayerKeys::DefenceCoverIndex, bestIndex);
 }
 
-void Meta::FindAttackSupportPlayerIndex(
-	const BlackBoard& sharedBB, 
-	BlackBoard& allyTeamBB,
-	BlackBoard& enemyTeamBB, 
-	std::vector<std::unique_ptr<SoccerPlayer>>& players, 
-	float elapsedTime)
+void Meta::AssignAttack(
+	int teamNumber,
+	BlackBoard& teamBB,
+	const std::vector<std::unique_ptr<SoccerPlayer>>& players)
 {
-	//三人にも対応した役振りを作る。
-	int referenceIndex = sharedBB.Get<int>(BallKeys::OwnerIndex).value_or(-1);
-
-	if (referenceIndex < 0)
-	{
-		referenceIndex = sharedBB.Get<int>(BallKeys::PassTarget).value_or(-1);
-	}
-
-	if (referenceIndex < 0 ||
-		referenceIndex >= static_cast<int>(players.size()) ||
-		!players[referenceIndex])
-	{
-		return;
-	}
-
-	//保持者のチーム番号
-	const int referenceTeam = players[referenceIndex]->GetTeamNumber();
-
-	if (referenceTeam < 0 || referenceTeam>2)
-	{
-		return;
-	}
-
-	//保持者以外の味方の番号
-	std::vector<int> candidates;
-
-	for (int i = 0; i < static_cast<int>(players.size()); ++i)
-	{
-		if (i == referenceIndex || !players[i])
-		{
-			continue;
-		}
-
-		if (players[i]->GetTeamNumber()!= referenceTeam)
-		{
-			continue;
-		}
-
-		//味方の番号を保存
-		candidates.push_back(i);
-	}
-
-	BlackBoard& teamBB = referenceTeam == 0 ? allyTeamBB : enemyTeamBB;
-
-	// 保持者以外に味方がいない
-	if (candidates.empty())
+	//攻撃中でなければ攻撃担当を解除
+	if (!teamBB.Get<bool>(TeamKeys::IsAttacking).value_or(false))
 	{
 		teamBB.Set(PlayerKeys::AttackSupportPlayerIndex, -1);
+
 		teamBB.Set(PlayerKeys::AttackWidePlayerIndex, -1);
+
 		return;
 	}
 
-	// 全体で２人：残る１人をSupportにする
-	if (candidates.size() == 1)
-	{
-		teamBB.Set(PlayerKeys::AttackSupportPlayerIndex,candidates[0]);
-		teamBB.Set(PlayerKeys::AttackWidePlayerIndex, -1);
-		return;
-	}
-
-
-	const int a = candidates[0];
-	const int b = candidates[1];
-
-
-	int supportIndex = a;
-	int wideIndex = b;
-
-	DirectX::XMFLOAT3 OwnerPos = players[referenceIndex]->GetPosition();
-
-	DirectX::XMFLOAT3 supportPos = players[supportIndex]->GetPosition();
-	DirectX::XMFLOAT3 widePos = players[wideIndex]->GetPosition();
-
-	const auto GoalPos = teamBB.Get<DirectX::XMFLOAT3>(TeamKeys::GoalPosition);
-
-	std::vector<std::vector<float>> costs(candidates.size(), std::vector<float>(2, 0.0f));
-
-	m_calAIeva.CalcAttackCost(supportPos, widePos, OwnerPos, *GoalPos);
-
-
-
-
-
-	
+	//保持者、またはパスの受け手を取得
+	const int referenceIndex = GetReference(teamBB, players);
 
 	if (referenceIndex < 0)
 	{
 		return;
 	}
 
-	for (int teamNumber = 0; teamNumber < 2; ++teamNumber)
-	{
-		BlackBoard& teamBB = teamNumber == 0 ? allyTeamBB : enemyTeamBB;
-
-		DirectX::XMFLOAT3 OwnerPos = players[referenceIndex]->GetPosition();
-
-		PressAssignmentState& state = m_pressStates[teamNumber];
-
-		const int currentIndex = teamBB.Get<int>(PlayerKeys::PressPlayerIndex).value_or(-1);
-
-		const bool isAttacking = teamBB.Get<bool>(TeamKeys::IsAttacking).value_or(false);
-
-		if (!isAttacking)
+	// 保持者・受け手以外の、有効な味方か確認する
+	const auto isCandidate = [&](int index)
 		{
-			teamBB.Set(PlayerKeys::AttackSupportPlayerIndex, -1);
-			continue;
-		}
+			return index >= 0 &&
+				index < static_cast<int>(players.size()) &&
+				players[index] &&
+				players[index]->GetTeamNumber() == teamNumber &&
+				index != referenceIndex;
+		};
 
-		//攻撃サポートを決める。
-		//最も近いプレイヤーを探す。
-		int bestIndex = -1;
-		float nearestDistSq = FLT_MAX;
+	// 現在の担当を取得
+	int supportIndex = teamBB.Get<int>(PlayerKeys::AttackSupportPlayerIndex).value_or(-1);
+	int wideIndex = teamBB.Get<int>(PlayerKeys::AttackWidePlayerIndex).value_or(-1);
+
+	// Supportが候補から外れたら、基準選手に近い味方を選ぶ
+	if (!isCandidate(supportIndex))
+	{
+		const auto referencePos = players[referenceIndex]->GetPosition();
+
+		supportIndex = FindNearest(players, teamNumber, referencePos, referenceIndex);
+	}
+
+	// Wideが無効、またはSupportと重複したら選び直す
+	if (!isCandidate(wideIndex) || wideIndex == supportIndex)
+	{
+		wideIndex = -1;
+
 		for (int i = 0; i < static_cast<int>(players.size()); ++i)
 		{
-			SoccerPlayer* player = players[i].get();
-			if (!player || player->GetTeamNumber() != teamNumber || i == currentIndex)
+			if (i != supportIndex && isCandidate(i))
 			{
-				continue;
-			}
-
-			if (i == referenceIndex)
-			{
-				continue;
-			}
-
-			DirectX::XMFLOAT3 playerPos = player->GetPosition();
-
-			float dx = OwnerPos.x - playerPos.x;
-			float dz = OwnerPos.z - playerPos.z;
-
-			float distSq = dx * dx + dz * dz;
-
-			if (distSq < nearestDistSq)
-			{
-				nearestDistSq = distSq;
-				bestIndex = i;
+				wideIndex = i;
+				break;
 			}
 		}
-
-		int supportIndex =
-			teamBB.Get<int>(PlayerKeys::AttackSupportPlayerIndex).value_or(-1);
-
-		int wideIndex =
-			teamBB.Get<int>(PlayerKeys::AttackWidePlayerIndex).value_or(-1);
-
-		// 保持者になった選手など、候補から外れた担当を選び直す
-		if (std::find(candidates.begin(), candidates.end(), supportIndex)
-			== candidates.end())
-		{
-			supportIndex = bestIndex;
-		}
-
-		if (wideIndex == supportIndex ||
-			std::find(candidates.begin(), candidates.end(), wideIndex)
-			== candidates.end())
-		{
-			wideIndex = -1;
-
-			for (int index : candidates)
-			{
-				if (index != supportIndex)
-				{
-					wideIndex = index;
-					break;
-				}
-			}
-		}
-
-		teamBB.Set(PlayerKeys::AttackSupportPlayerIndex, supportIndex);
-		teamBB.Set(PlayerKeys::AttackWidePlayerIndex, wideIndex);
 	}
+
+	// 候補がいない役割は-1のまま登録
+	teamBB.Set(PlayerKeys::AttackSupportPlayerIndex, supportIndex);
+	teamBB.Set(PlayerKeys::AttackWidePlayerIndex, wideIndex);
 }
 
 //誰が誰をつくかを決める
 //その後に担当によってつく相手にどう動くか決める。
 void Meta::AssignMarks(
-	const BlackBoard& sharedBB, 
-	BlackBoard& allyTeamBB, 
-	BlackBoard& enemyTeamBB, 
-	std::vector<std::unique_ptr<SoccerPlayer>>& players, 
-	float elapsedTime)
+	int teamNumber,
+	const BlackBoard& teamBB,
+	const std::vector<std::unique_ptr<SoccerPlayer>>& players)
 {
+	//前回の担当は、交代コストの計算に使うので残す
 	m_markTargets.resize(players.size(), -1);
 
-	std::vector<int> nextTargets(players.size(), -1);
+	auto& defenders = m_markPlayers[teamNumber];
+	defenders.clear();
 
-	for (int team = 0; team < 2; ++team)
-	{
-		m_markPlayers[team].clear();
-	}
+	std::vector<int> opponents;
 
-
-	//今いる選手をチーム別に集める。
 	for (int i = 0; i < static_cast<int>(players.size()); ++i)
 	{
 		if (!players[i])
 		{
+			m_markTargets[i] = -1;
 			continue;
 		}
 
-		const int  teamNumber = players[i]->GetTeamNumber();
+		const int team = players[i]->GetTeamNumber();
 
-		if (teamNumber < 0 || teamNumber >= 2)
+		if (team == teamNumber)
 		{
-			continue;
+			defenders.push_back(i);
 		}
-
-		m_markPlayers[teamNumber].push_back(i);
+		else if (team == 1 - teamNumber)
+		{
+			opponents.push_back(i);
+		}
 	}
 
-	const int ownerIndex = sharedBB.Get<int>(BallKeys::OwnerIndex).value_or(-1);
+	const auto goalPos = teamBB.Get<DirectX::XMFLOAT3>(TeamKeys::GoalPosition);
 
-	for (int team = 0; team < 2; ++team)
+	// 今の組み合わせ計算は、両チームが同じ人数の場合に対応
+	if (!goalPos ||
+		defenders.empty() ||
+		defenders.size() != opponents.size())
 	{
-		const auto& defenders = m_markPlayers[team];
-		const auto& opponents = m_markPlayers[1 - team];
-
-		if (defenders.empty() || defenders.size() != opponents.size())
+		for (int index : defenders)
 		{
-			continue;
+			m_markTargets[index] = -1;
 		}
 
+		return;
+	}
 
-		const BlackBoard& teamBB = team == 0 ? allyTeamBB : enemyTeamBB;
+	const int ownerIndex =
+		teamBB.Get<int>(BallKeys::OwnerIndex).value_or(-1);
 
-		const auto goalPos = teamBB.Get<DirectX::XMFLOAT3>(TeamKeys::DefendGoalPosition);
+	const int count = static_cast<int>(defenders.size());
 
-		if (!goalPos)
-		{
-			continue;
-		}
+	// 相手ごとの危険度を計算
+	std::vector<float> threats(count);
 
-		const int  count = static_cast<int>(defenders.size());
+	for (int j = 0; j < count; ++j)
+	{
+		const int opponentIndex = opponents[j];
 
-		std::vector<float> threats(count);
+		threats[j] = m_calAIeva.CalcMarkThreat(
+			players[opponentIndex]->GetPosition(),
+			*goalPos,
+			opponentIndex == ownerIndex);
+	}
+
+	// 各選手が各相手を担当する場合のコスト表
+	std::vector<std::vector<float>> costs(
+		count, std::vector<float>(count));
+
+	for (int i = 0; i < count; ++i)
+	{
+		const int defenderIndex = defenders[i];
+		const auto defenderPos =
+			players[defenderIndex]->GetPosition();
 
 		for (int j = 0; j < count; ++j)
 		{
 			const int opponentIndex = opponents[j];
 
-			threats[j] = m_calAIeva.CalcMarkThreat(
-				players[opponentIndex]->GetPosition(), *goalPos, opponentIndex == ownerIndex);
-		}
+			float cost = m_calAIeva.CalcMarkCost(
+				defenderPos,
+				players[opponentIndex]->GetPosition(),
+				*goalPos,
+				threats[j]);
 
-		std::vector<std::vector<float>> costs(count, std::vector<float>(count));
+			// 担当変更には負担を加え、頻繁な交代を抑える
+			const int currentTarget =
+				m_markTargets[defenderIndex];
 
-		for (int i = 0; i < count; ++i)
-		{
-			const int defenderIndex = defenders[i];
-
-			for (int j = 0; j < count; ++j)
+			if (currentTarget >= 0 &&
+				currentTarget != opponentIndex)
 			{
-				const int opponentIndex = opponents[j];
-
-				float cost = m_calAIeva.CalcMarkCost(
-					players[defenderIndex]->GetPosition(),
-					players[opponentIndex]->GetPosition(),
-					*goalPos,
-					threats[j]);
-
-				const int currentTarget = m_markTargets[defenderIndex];
-
-				if (currentTarget >= 0 && currentTarget != opponentIndex)
-				{
-					cost += m_markSwitchCost;
-				}
-
-				costs[i][j] = cost;
-			}
-		}
-
-
-		std::vector<int> order(count);
-
-		for (int i = 0; i < count; ++i)
-		{
-			order[i] = i;
-		}
-
-		std::vector<int> bestOrder = order;
-
-		float bestCost = std::numeric_limits<float>::infinity();
-
-		do
-		{
-			float totalCost = 0.0f;
-
-			for (int i = 0; i < count; ++i)
-			{
-				totalCost += costs[i][order[i]];
+				cost += m_markSwitchCost;
 			}
 
-			if (totalCost < bestCost)
-			{
-				bestCost = totalCost;
-				bestOrder = order;
-			}
-		} while (std::next_permutation(order.begin(), order.end()));
-		//全パターン分作ってくれてる
-		
-
-		for (int i = 0; i < count; ++i)
-		{
-			nextTargets[defenders[i]] = opponents[bestOrder[i]];
+			costs[i][j] = cost;
 		}
 	}
 
-	m_markTargets = std::move(nextTargets);
+	// 最も合計コストが小さい組み合わせを登録
+	const auto bestOrder = FindOrder(costs);
+
+	for (int i = 0; i < count; ++i)
+	{
+		m_markTargets[defenders[i]] =
+			opponents[bestOrder[i]];
+	}
+
 }
 
-//味方プレイヤーの役割を決める。
-void Meta::AssignAttack(
-	const BlackBoard& sharedBB, 
-	BlackBoard& allyTeamBB, 
-	BlackBoard& enemyTeamBB, 
-	std::vector<std::unique_ptr<SoccerPlayer>>& players, 
-	float elapsedTime)
+void Meta::AssignChase(
+	int teamNumber,
+	BlackBoard& teamBB,
+	const std::vector<std::unique_ptr<SoccerPlayer>>& players)
 {
-	//三人にも対応した役振りを作る。
-	const int OwnerIndex = sharedBB.Get<int>(BallKeys::OwnerIndex).value_or(-1);
+	// 今回の担当を決める前に、前回の担当を解除
+	teamBB.Set(PlayerKeys::FreeBallPlayerIndex, -1);
 
-	if (OwnerIndex < 0 || !players[OwnerIndex])
-	{
-		return;
-	}
-
-	//保持者のチーム番号
-	const int OwnerTeam = players[OwnerIndex]->GetTeamNumber();
-
-	if (OwnerTeam < 0 || OwnerTeam>2)
-	{
-		return;
-	}
-
-	//保持者以外の味方の番号
-	std::vector<int> candidates;
-
-	for (int i = 0; i < static_cast<int>(players.size()); ++i)
-	{
-		if (i == OwnerIndex || !players[i])
-		{
-			continue;
-		}
-
-		if (players[i]->GetTeamNumber() != OwnerTeam)
-		{
-			continue;
-		}
-
-		//味方の番号を保存
-		candidates.push_back(i);
-	}
-
-	const int a = candidates[0];
-	const int b = candidates[1];
-
-
-	int supportIndex = a;
-	int wideIndex = b;
-
-	DirectX::XMFLOAT3 OwnerPos = players[OwnerIndex]->GetPosition();
-
-
-	BlackBoard& teamBB = OwnerTeam == 0 ? allyTeamBB : enemyTeamBB;
-	const auto GoalPos = teamBB.Get<DirectX::XMFLOAT3>(TeamKeys::GoalPosition);
-
-
-	std::vector<std::vector<float>> costs =
-		m_calAIeva.CalcAttackCost(players[a]->GetPosition(),
-			players[b]->GetPosition(),
-			OwnerPos,
-			*GoalPos);
-	
-
-	if (costs.empty())
-	{
-		return;
-	}
-
-	// 現在その役割を担当している選手
-	const int currentPlayers[2] =
-	{
-		teamBB.Get<int>(
-			PlayerKeys::AttackSupportPlayerIndex).value_or(-1),
-
-		teamBB.Get<int>(
-			PlayerKeys::AttackWidePlayerIndex).value_or(-1)
-	};
-
-	// １人の担当を変更する負担。
-	//const float switchCost = 1.0f;
-
-	//for (int i = 0; i < 2; ++i)
-	//{
-	//	for (int role = 0; role < 2; ++role)
-	//	{
-	//		if (currentPlayers[role] >= 0 &&
-	//			currentPlayers[role] != candidates[i])
-	//		{
-	//			costs[i][role] += switchCost;
-	//		}
-	//	}
-	//}
-
-	const float costAB = costs[0][0] + costs[1][1];
-
-	const float costBA = costs[1][0] + costs[0][1];
-
-
-	if (costBA < costAB)
-	{
-		supportIndex = b;
-		wideIndex = a;
-	}
-
-	teamBB.Set(PlayerKeys::AttackSupportPlayerIndex, supportIndex);
-	teamBB.Set(PlayerKeys::AttackWidePlayerIndex, wideIndex);
-}
-
-void Meta::AssainFreeBallPlayerIndex(
-	const BlackBoard& sharedBB, 
-	BlackBoard& allyTeamBB, 
-	BlackBoard& enemyTeamBB, 
-	std::vector<std::unique_ptr<SoccerPlayer>>& players, 
-	float elapsedTime)
-{
-	allyTeamBB.Set(PlayerKeys::FreeBallPlayerIndex, -1);
-	enemyTeamBB.Set(PlayerKeys::FreeBallPlayerIndex, -1);
-
-	const int ownerIndex =
-		sharedBB.Get<int>(BallKeys::OwnerIndex).value_or(-1);
+	// 保持中・パス中ならフリーボールとして扱わない
+	const int ownerIndex =teamBB.Get<int>(BallKeys::OwnerIndex).value_or(-1);
 
 	const int passTarget =
-		sharedBB.Get<int>(BallKeys::PassTarget).value_or(-1);
+		teamBB.Get<int>(BallKeys::PassTarget).value_or(-1);
 
 	if (ownerIndex >= 0 || passTarget >= 0)
 	{
 		return;
 	}
 
+	// 共有BBから現在のボール位置を取得
 	const auto ballPos =
-		sharedBB.Get<DirectX::XMFLOAT3>(BallKeys::Position);
+		teamBB.Get<DirectX::XMFLOAT3>(BallKeys::Position);
 
 	if (!ballPos)
 	{
 		return;
 	}
 
-	const int controlledIndex =
-		sharedBB.Get<int>(PlayerKeys::ControlledIndex).value_or(-1);
+	// ボールに一番近い、このチームの選手を担当にする
+	const int bestIndex =
+		FindNearest(players, teamNumber, *ballPos);
 
-	for (int teamNumber = 0; teamNumber < 2; ++teamNumber)
-	{
-		int bestIndex = -1;
-		float nearestDistSq = FLT_MAX;
-
-		for (int i = 0; i < static_cast<int>(players.size()); ++i)
-		{
-			SoccerPlayer* player = players[i].get();
-
-			if (!player ||
-				player->GetTeamNumber() != teamNumber)
-			{
-				continue;
-			}
-
-			const auto playerPos = player->GetPosition();
-
-			const float dx = ballPos->x - playerPos.x;
-			const float dz = ballPos->z - playerPos.z;
-			const float distSq = dx * dx + dz * dz;
-
-			if (distSq < nearestDistSq)
-			{
-				nearestDistSq = distSq;
-				bestIndex = i;
-			}
-		}
-
-		BlackBoard& teamBB =
-			teamNumber == 0 ? allyTeamBB : enemyTeamBB;
-
-		teamBB.Set(PlayerKeys::FreeBallPlayerIndex, bestIndex);
-	}
+	// 候補がいなければ-1を登録
+	teamBB.Set(PlayerKeys::FreeBallPlayerIndex, bestIndex);
 
 }
 
@@ -1031,6 +681,106 @@ void Meta::DrawDebug(
 				{ 1.0f, 1.0f, 1.0f, 1.0f });
 		}
 	}
+}
+
+int Meta::GetReference(
+	const BlackBoard& blackboard, 
+	const std::vector<std::unique_ptr<SoccerPlayer>>& players) const
+{
+	//まずは保持者を取得
+	int index = blackboard.Get<int>(BallKeys::OwnerIndex).value_or(-1);
+
+	//保持者がいなければ、パスの受け手を使う
+	if (index < 0)
+	{
+		index = blackboard.Get<int>(BallKeys::PassTarget).value_or(-1);
+	}
+
+	//有効な選手か確認
+	if (index < 0 || index >= static_cast<int>(players.size()) || !players[index])
+	{
+		return -1;
+	}
+
+	return index;
+}
+
+int Meta::FindNearest(
+	const std::vector<std::unique_ptr<SoccerPlayer>>& players, 
+	int TeamNumber, 
+	const DirectX::XMFLOAT3& targetPosition, 
+	int excludeIndex, 
+	int secondExcludeIndex) const
+{
+	int bestIndex = -1;
+
+	float nearestDistanceSq = std::numeric_limits<float>::infinity();
+
+	for (int i = 0; i < static_cast<int>(players.size()); ++i)
+	{
+		SoccerPlayer* player = players[i].get();
+
+		//選手なし、別チーム、除外対象なら飛ばす
+		if (!player || player->GetTeamNumber() != TeamNumber || i == excludeIndex || i == secondExcludeIndex)
+		{
+			continue;
+		}
+
+		const auto position = player->GetPosition();
+
+		const float dx = targetPosition.x - position.x;
+		const float dz = targetPosition.z - position.z;
+
+		const float distanceSq = dx * dx + dz * dz;
+
+		if (distanceSq < nearestDistanceSq)
+		{
+			nearestDistanceSq = distanceSq;
+			bestIndex = i;
+		}
+	}
+		return bestIndex;
+}
+
+std::vector<int> Meta::FindOrder(const std::vector<std::vector<float>>& costs) const
+{
+	const int count = static_cast<int>(costs.size());
+
+	if (count == 0)
+	{
+		return{};
+	}
+
+	//最初の組み合わせを0・1・２の順にする
+	std::vector<int> order(count);
+
+	for (int i = 0; i < count; ++i)
+	{
+		order[i] = i;
+	}
+
+	std::vector<int> bestOrder = order;
+
+	float bestCost = std::numeric_limits<float>::infinity();
+
+	do
+	{
+		float totalCost = 0.0f;
+
+		for (int i = 0; i < count; ++i)
+		{
+			totalCost += costs[i][order[i]];
+		}
+
+		if (totalCost < bestCost)
+		{
+			bestCost = totalCost;
+			bestOrder = order;
+		}
+	} while (std::next_permutation(order.begin(), order.end()));
+	//全パターン分作ってくれてる
+
+	return bestOrder;
 }
 
 

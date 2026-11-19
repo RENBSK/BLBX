@@ -4,6 +4,7 @@
 #include "Graphics/Camera/Camera.h"
 #include "Scene/SceneManager.h"
 #include "Scene/SceneGame.h"
+#include "Scene/SceneTitle.h"
 
 #include <ImGuiCtrl.h>
 #include <imgui.h>
@@ -12,20 +13,23 @@
 
 void SoccerWorld::Initialize(const PlayerConfig& config)
 {
-	//ボール
+	//ボール初期化
 	m_ball.Initialize();
-	//プレイヤー
+	//プレイヤー初期化
     PlayerManager::Instance().CreateTeam(0, PLAYER_COUNT, config);
     PlayerManager::Instance().CreateTeam(1, PLAYER_COUNT, config);
-
-    auto& manager = PlayerManager::Instance().GetPlayers();
-
-    m_soccerAISystem.Initialize(static_cast<int>(manager.size()));
-
+    //選手を管理するPlayerManager本体を取得
     auto& playerManager = PlayerManager::Instance();
+    //Managerが持つ選手一覧を参照で取得
+    auto& manager = PlayerManager::Instance().GetPlayers();
+    //AIシステム初期化
+    m_soccerAISystem.Initialize(static_cast<int>(manager.size()));
+    //開始選手(KickOffでボールを持たせる選手)
     SoccerPlayer* starter = playerManager.GetPlayer(0);
-
+    //プレイヤーを初期位置に設定
     PlacePlayers();
+    //画像
+    sprites = std::make_unique<Sprite>(Graphics::Instance().GetDevice(), L"./Data/Sprite/Goal.png");
 
     if (starter)
     {
@@ -37,24 +41,43 @@ void SoccerWorld::Initialize(const PlayerConfig& config)
         playerManager.SetBallOwner(0);
     }
 
+    //変数の初期化
     m_passElapsed = 0.0f;
     m_kickoffTargetIndex = -1;
-
     m_dribbleController.Reset();
-
     m_matchPhase = MatchPhase::KickOff;
+    m_spriteX = SCREEN_WIDTH / 4;
+    m_spriteY = SCREEN_HEIGHT / 4;
+    m_spriteW = SCREEN_WIDTH / 2;
+    m_spriteH = SCREEN_HEIGHT / 2;
+    
+    m_isGoal = false;
+    m_goalElapsed = 0.0f;
+    m_drawImGui = false;
 }
 
 void SoccerWorld::Finalize()
 {
-	//ボール
+	//ボール終了化
 	m_ball.Finalize();
-	//プレイヤー
+	//プレイヤー終了化
     PlayerManager::Instance().Finalize();
 }
 
 void SoccerWorld::Update(float elapsedTime)
 {
+    // ゴール後はゲームの更新を止める
+    if (m_isGoal)
+    {
+        m_goalElapsed += elapsedTime;
+        //仮に四秒後にタイトルに戻す。
+        if (m_goalElapsed > 4.0f)
+        {
+            SceneManager::Instance().ChangeScene(new SceneTitle);
+        }
+        return;
+    }
+
     auto& manager = PlayerManager::Instance();
     auto& bb = manager.GetSharedBlackBoard();
 
@@ -92,6 +115,16 @@ void SoccerWorld::Update(float elapsedTime)
         const int supportIndex = FinPassTarget(*player);
         SoccerPlayer* support = manager.GetPlayer(supportIndex);
 
+        const auto state = player->GetAnimationState();
+
+        bool pass = state == PlayerAnimationState::Pass_Right
+            || state == PlayerAnimationState::Pass_Left;
+
+        if (pass)
+        {
+
+        }
+
         const DirectX::XMFLOAT3 GoalPos = bb.Get<DirectX::XMFLOAT3>(TeamKeys::GoalPosition).value_or(DirectX::XMFLOAT3{});
 
         if (m_playerController.Update(*player, m_ball, support, m_dribbleController, GoalPos, elapsedTime))
@@ -118,6 +151,14 @@ void SoccerWorld::Update(float elapsedTime)
 
     // ボール更新
     m_ball.Update(elapsedTime);
+
+    if (IsGoal())
+    {
+        m_isGoal = true;
+        m_goalElapsed = 0.0f;
+        m_ball.Stop();
+        return;
+    }
     //パス処理
     UpdatePass(elapsedTime);
     //AIシステム更新
@@ -157,6 +198,35 @@ void SoccerWorld::Render()
         D3D11_PRIMITIVE_TOPOLOGY_LINELIST);
 
     graphics.SetDepthState(0);
+
+    if (m_isGoal && sprites)
+    {
+        float t = m_goalElapsed / m_goalDuration;
+
+        if (t > 1.0f)
+        {
+            t = 1.0f;
+        }
+
+        // 最初は速く、最後はゆっくり拡大
+        float scale = 1.0f - (1.0f - t) * (1.0f - t) * (1.0f - t);
+
+        float width = m_spriteW * scale;
+        float height = m_spriteH * scale;
+
+        // 中心を固定して拡大
+        float x = m_spriteX + (m_spriteW - width) * 0.5f;
+        float y = m_spriteY + (m_spriteH - height) * 0.5f;
+
+        sprites->render(
+            Graphics::Instance().GetContext(),
+            x, y,
+            width, height,
+            1, 1, 1, 1,
+            0);
+
+        m_drawImGui = true;
+    }
 }
 
 void SoccerWorld::DrawImGui(bool showBall, bool showPlayer)
@@ -200,10 +270,33 @@ void SoccerWorld::DrawImGui(bool showBall, bool showPlayer)
         }
     }
 
+        ImGui::DragFloat(
+            "SpriteX",
+            &m_spriteX,
+            0.1f);
+
+        ImGui::DragFloat(
+            "SpriteY",
+            &m_spriteY,
+            0.1f);
+
+        ImGui::DragFloat(
+            "SpriteW",
+            &m_spriteW,
+            0.1f);
+
+        ImGui::DragFloat(
+            "SpriteH",
+            &m_spriteH,
+            0.1f);
+
     ImGui::End();
 
     // チェックボックスの設定を使って描画
-    m_soccerAISystem.DrawDebugOverlay(PlayerManager::Instance().GetPlayers());
+    if (!m_drawImGui)
+    {
+        m_soccerAISystem.DrawDebugOverlay(PlayerManager::Instance().GetPlayers());
+    }
 
 #endif
 }
@@ -212,43 +305,6 @@ void SoccerWorld::UpdateBallOwner()
 {
     auto& manager = PlayerManager::Instance();
     auto& bb = manager.GetSharedBlackBoard();
-
-    //const int ControledIndex = bb.Get<int>(PlayerKeys::ControlledIndex).value_or(-1);
-
-    //SoccerPlayer* player = manager.GetPlayer(ControledIndex);
-
-    //if (!player)
-    //{
-    //    m_dribbleController.Reset();
-    //    return;
-    //}
-
-    //DirectX::XMFLOAT3 ballPos = m_ball.GetPosition();
-    //DirectX::XMFLOAT3 playerPos = player->GetPosition();
-
-    //const auto GoalPos = bb.Get<DirectX::XMFLOAT3>(TeamKeys::GoalPosition).value_or(DirectX::XMFLOAT3{});
-
-    //const float dx = ballPos.x - playerPos.x;
-    //const float dz = ballPos.z - playerPos.z;
-
-    //const float length = std::sqrt(dx * dx + dz * dz);
-
-    ////ボールの取得処理
-    //constexpr float acquireDistance = 0.2f;
-    //constexpr float releaseDistance = 0.6f;
-
-    //if (length < acquireDistance)
-    //{
-    //    manager.SetBallOwner(ControledIndex);
-    //}
-    //else if (player->GetHasBall() && length > releaseDistance)
-    //{
-    //    manager.SetBallOwner(-1);
-    //}
-
-
-
-
     const auto ballPos = m_ball.GetPosition();
 
     //ボールの取得処理
@@ -321,6 +377,8 @@ void SoccerWorld::UpdateBallOwner()
 
 void SoccerWorld::UpdatePass(float elapsedTime)
 {
+
+
     auto& manager = PlayerManager::Instance();
     auto& bb = manager.GetSharedBlackBoard();
 
@@ -418,6 +476,18 @@ int SoccerWorld::FinPassTarget(SoccerPlayer& player)
     }
 
     return supportIndex;
+}
+
+bool SoccerWorld::IsGoal() const
+{
+    const auto position = m_ball.GetPosition();
+
+    // ゴール幅・高さの範囲内で、奥のラインへ到達
+    return position.x >= -0.55f &&
+        position.x <= 0.76f &&
+        position.y >= 0.0f &&
+        position.y <= 1.44f &&
+        position.z >= 10.78f;
 }
 
 void SoccerWorld::UpdateKickoff()
